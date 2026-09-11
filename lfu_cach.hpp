@@ -19,6 +19,7 @@ class Lfu_cach
         {
             int frequency;// частота
             Iterator position;
+            Iterator frequency_position;//позиция в frequency 
         };
         //можно это запихнуть в один ассоциативный конетейнер но это буде  очень нагромаждено
         std::list<int> lfu_cach;
@@ -30,18 +31,18 @@ class Lfu_cach
         
         void insert_new(int key);//создать новый эллемент и запись в хеш таблице
         void evict_oldest();//удалить самый старый эллемент и запись в хеш таблице
-        void move_existing(int key);//переместить существующий эллемент
+        void move_existing(Node& node_key);//переместить существующий эллемент
         
-        void new_ell_frequency_table(int key);
-        void relocation_frequency_table(int key_frequency, int key);
+        Iterator new_ell_frequency_table(int key);
+        void relocation_frequency_table(Node& node_key);
         int get_key_oldest(); 
 
     public:
         Lfu_cach();
         explicit Lfu_cach(std::size_t capacity);
 
-        Lfu_cach(const Lru_cach&) = delete;
-        Lfu_cach& operator=(const Lru_cach&) = delete;
+        Lfu_cach(const Lfu_cach&) = delete;
+        Lfu_cach& operator=(const Lfu_cach&) = delete;
 
         void access(int key);//функция для обединения всего в одну систему;
         std::size_t size() const noexcept;

@@ -11,16 +11,16 @@ void Lru_cach::access (int key)
 
     if(found_ell != hash_table.end())
     {
-        Lru_cach::make_recent(found_ell -> second);
+        make_recent(found_ell -> second);
         //found_ell -> second = lru_cach.begin(); вроде не нужно
         return;
     }
 
-    Lru_cach::insert_new(key);
+    insert_new(key);
 
     if(lru_cach.size() > capacity_)
     {
-        Lru_cach::evict_oldest();
+        evict_oldest();
         return;
     }
 
