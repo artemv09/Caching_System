@@ -42,7 +42,7 @@ void Lru_cach::evict_oldest()// удалить самый давний элем�
 
 void Lru_cach::insert_new(int key)
 {
-    //TODO нейронка предлагает налепить try и catch хз насколько целесообразно
+    //TODO нейронка предлагает налепить try и catchБ это надо сделать
     lru_cach.push_front(key);
     hash_table.emplace(key, lru_cach.begin());
 }

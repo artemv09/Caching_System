@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <iterator>
 #include <cstddef>
+#include <algorithm>
 
 using Iterator = std::list<int>::iterator;
 
@@ -29,7 +30,7 @@ class Lru_cach
         Lru_cach(const Lru_cach&) = delete;
         Lru_cach& operator=(const Lru_cach&) = delete;
 
-        void access(int key); //функция для обедлинения всего в одну систему;
+        void access(int key);//функция для обединения всего в одну систему
 
         std::size_t size() const noexcept;
         std::size_t capacity() const noexcept;
