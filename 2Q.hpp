@@ -15,9 +15,9 @@
 class Two_Q_Cach
 {
     private://в принципе я могу использовать интерфейс LRU но это нарушит его инкапсуляцию
-        std::size_t Kin;
-        std::size_t Kout;
         std::size_t capacity_;
+        std::size_t Kout;
+        std::size_t Kin;
 
         std::list<int> a1in;
         std::unordered_map<int, Iterator> a1in_table;
@@ -32,7 +32,8 @@ class Two_Q_Cach
         void insert_new(int key, std::unordered_map<int, Iterator>& hach_table, std::list<int>& list);
 
         void make_recent_am(Iterator position);// перенести существующий узел списка в head
-                                
+        void rules_displacment();
+                           
     public:
         Two_Q_Cach();
         explicit Two_Q_Cach(std::size_t capacity);
@@ -41,7 +42,7 @@ class Two_Q_Cach
         Two_Q_Cach& operator=(const Two_Q_Cach&) = delete;
 
         bool access(int key);
-        bool check_a1out(int key);
+        bool check(int key, std::unordered_map<int, Iterator>& hach_table);
 
         std::size_t size() const noexcept;
         std::size_t capacity() const noexcept;
