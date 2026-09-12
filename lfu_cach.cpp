@@ -65,12 +65,11 @@ Lfu_cach::Lfu_cach(std::size_t capacity): capacity_(capacity), min_frequency(0)
 {
 }
 
-
-void Lfu_cach::access(int key)//функция для обедлинения всего в одну систему
+bool Lfu_cach::access(int key)//функция для обедлинения всего в одну систему
 {
     if(capacity_ == 0)
     {
-        return;
+        return false;
     }
 
     auto found_ell = hash_table.find(key);
@@ -78,19 +77,19 @@ void Lfu_cach::access(int key)//функция для обедлинения в�
     if(found_ell != hash_table.end())
     {
         move_existing(found_ell -> second);
-        return;
+        return true;
     }
 
     if(lfu_cach.size() == capacity_)
     {
         evict_oldest();
         insert_new(key);
-        return;
+        return false;
     }
 
     insert_new(key);
 
-    return;
+    return false;
 }
 
 int Lfu_cach::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта

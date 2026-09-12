@@ -1,10 +1,10 @@
 #include "lru_cach.hpp"
 
-void Lru_cach::access (int key)
+bool Lru_cach::access (int key)
 {
     if(capacity_ == 0)
     {
-        return;
+        return false;
     }
 
     auto found_ell = hash_table.find(key);
@@ -13,7 +13,7 @@ void Lru_cach::access (int key)
     {
         make_recent(found_ell -> second);
         //found_ell -> second = lru_cach.begin(); вроде не нужно
-        return;
+        return true;
     }
 
     insert_new(key);
@@ -21,16 +21,15 @@ void Lru_cach::access (int key)
     if(lru_cach.size() > capacity_)
     {
         evict_oldest();
-        return;
+        return false;
     }
 
-    return;
+    return false;
 }
 
 void Lru_cach::make_recent(Iterator position)// перенести существующий узел списка в head
 {
     lru_cach.splice(lru_cach.begin(), lru_cach, position);
-
 }
 
 void Lru_cach::evict_oldest()// удалить самый давний элемент из списка и хеш-таблицы
@@ -42,7 +41,7 @@ void Lru_cach::evict_oldest()// удалить самый давний элем�
 
 void Lru_cach::insert_new(int key)
 {
-    //TODO нейронка предлагает налепить try и catchБ это надо сделать
+    //TODO нейронка предлагает налепить try и catch это надо сделать
     lru_cach.push_front(key);
     hash_table.emplace(key, lru_cach.begin());
 }

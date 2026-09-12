@@ -44,7 +44,7 @@ class Lfu_cach
         Lfu_cach(const Lfu_cach&) = delete;
         Lfu_cach& operator=(const Lfu_cach&) = delete;
 
-        void access(int key);//функция для обединения всего в одну систему;
+        bool access(int key);//функция для обединения всего в одну систему;
         std::size_t size() const noexcept;
         std::size_t capacity() const noexcept;
 
