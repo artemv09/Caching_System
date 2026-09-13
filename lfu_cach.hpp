@@ -24,7 +24,7 @@ class Lfu_cach
         //можно это запихнуть в один ассоциативный конетейнер но это буде  очень нагромаждено
         std::list<int> lfu_cach;
         std::unordered_map<int, Node> hash_table;// здесь хранятится позиция и частота
-        std::unordered_map<int, std::list<int>> frequency_table;
+        std::unordered_map<int, std::list<int>> frequency_table;// нужно для опредения наименьшей частоты
 
         std::size_t capacity_;
         int min_frequency;

@@ -1,4 +1,4 @@
-#include "2Q.hpp"
+#include "2Q_cach.hpp"
 
 void Two_Q_Cach::delet_hach_list_last(std::unordered_map<int, Iterator>& hach_table, std::list<int>& list)
 {

@@ -11,7 +11,7 @@
 #include <algorithm>
 
 #include "lfu_cach.hpp"
-
+//TODO - когда будем добалять шаблоны испольщовать using для карты и списков
 class Two_Q_Cach
 {
     private://в принципе я могу использовать интерфейс LRU но это нарушит его инкапсуляцию
