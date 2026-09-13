@@ -38,7 +38,7 @@ class Lfu_cach
         int get_key_oldest(); 
 
     public:
-        Lfu_cach();
+        explicit Lfu_cach();
         explicit Lfu_cach(std::size_t capacity);
 
         Lfu_cach(const Lfu_cach&) = delete;

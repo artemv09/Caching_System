@@ -35,7 +35,7 @@ class Two_Q_Cach
         void rules_displacment();
                            
     public:
-        Two_Q_Cach();
+        explicit Two_Q_Cach();
         explicit Two_Q_Cach(std::size_t capacity);
 
         Two_Q_Cach(const Two_Q_Cach&) = delete;

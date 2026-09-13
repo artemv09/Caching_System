@@ -24,7 +24,7 @@ class Lru_cach
         void insert_new(int key);// добавить новый узел списка и соответствующую запись в хеш-таблицу
 
     public:
-        Lru_cach();
+        explicit Lru_cach();
         explicit Lru_cach(std::size_t capacity);
 
         Lru_cach(const Lru_cach&) = delete;
