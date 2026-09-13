@@ -71,7 +71,7 @@ bool Two_Q_Cach::access(int key)
     return false;
 }
 
-bool Two_Q_Cach::check(int key, std::unordered_map<int, Iterator>& hach_table)
+bool Two_Q_Cach::check(int key, std::unordered_map<int, Iterator>& hach_table)//проверка наличия ключа в таблице
 {
     return hach_table.find(key) != hach_table.end();
 }
@@ -85,7 +85,7 @@ std::size_t Two_Q_Cach::capacity() const noexcept
     return capacity_;
 }
 
-void Two_Q_Cach::rules_displacment()
+void Two_Q_Cach::rules_displacment()//правила для выброса эллемента из am и a1in
 {
     if(size() == capacity_)
     {
