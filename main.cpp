@@ -4,7 +4,7 @@
 
 #include "lru_cach.hpp"
 #include "lfu_cach.hpp"
-#include "2Q.hpp"
+#include "2Q_cach.hpp"
 
 int main()
 {
