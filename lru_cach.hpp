@@ -9,6 +9,7 @@
 #include <iterator>
 #include <cstddef>
 #include <algorithm>
+#include <cassert>
 
 using Iterator = std::list<int>::iterator;
 
