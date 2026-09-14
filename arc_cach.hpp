@@ -121,9 +121,8 @@ template <typename Key>
 void Arc_cach<Key>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//переместить эллемент в T2 ЭТО ГЛАВАНАЯ ФУНКЦИЯ
 {
     auto& node = hash_iterator -> second;
-    auto request_in = node.type_list;//в какой тип List мы попали
 
-    switch(request_in)
+    switch(node.type_list)// из какого list мы вызываем
     {
         case(Type_list_save::T1):
         {

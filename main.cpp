@@ -2,15 +2,17 @@
 #include <vector>
 #include <string>
 
-#include "lru_cach.hpp"
-#include "lfu_cach.hpp"
-#include "2Q_cach.hpp"
+// #include "lru_cach.hpp"
+// #include "lfu_cach.hpp"
+// #include "2Q_cach.hpp"
+// #include "arc_cach.hpp"
+#include "lirs.hpp"
 
 int main()
 {
-    Lfu_cach copy(3);
+    Lirs_cach<int> copy(4, 1);
 
-    std::vector<int> as {1, 2, 3, 4, 2, 4, 1, 3, 5};
+    std::vector<int> as {1, 2, 3, 4, 4};
     int count = 0;
     for(int i : as)
     {
