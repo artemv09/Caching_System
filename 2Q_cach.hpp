@@ -18,7 +18,7 @@ class Two_Q_Cach
         std::size_t capacity_;
         std::size_t Kout;
         std::size_t Kin;
-
+        //TODO наверное будет разумнее при перестройке сделать вместо 3 хеш таблиц одну с enum как в ARC
         std::list<int> a1in;
         std::unordered_map<int, Iterator> a1in_table;
 
