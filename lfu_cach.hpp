@@ -72,7 +72,7 @@ template <typename Key>
 void Lfu_cach<Key>::relocation_frequency_table(Node& node_key)
 {
     int key_frequency = node_key.frequency;
-    int new_key_frequency = key_frequency + 1;//TODO ошибка
+    int new_key_frequency = key_frequency + 1;
 
     auto& list_with_key = frequency_table.find(key_frequency) -> second;
 
@@ -93,7 +93,7 @@ void Lfu_cach<Key>::relocation_frequency_table(Node& node_key)
 }
 
 template <typename Key>
-Iterator Lfu_cach<Key>::new_ell_frequency_table(const Key& key)//добавление нового эллемента в frequency_table
+typename Lfu_cach<Key>::Iterator Lfu_cach<Key>::new_ell_frequency_table(const Key& key)//добавление нового эллемента в frequency_table
 {
     auto result = frequency_table.try_emplace(1);//если такого списка нет то она создаст
     auto& frequency_list = result.first -> second;
