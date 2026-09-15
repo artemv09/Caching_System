@@ -1,4 +1,4 @@
-#include "lru_cach.hpp"
+
 
 bool Lru_cach::access (int key)
 {
@@ -62,12 +62,4 @@ std::size_t Lru_cach::size() const noexcept
 std::size_t Lru_cach::capacity() const noexcept
 {
     return capacity_;
-}
-
-void Lru_cach::output()
-{
-    for(int copy : lru_cach)
-    {
-        std::cout << copy << " ";
-    }
 }

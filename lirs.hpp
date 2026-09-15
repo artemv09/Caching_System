@@ -93,22 +93,24 @@ void Lirs_cach<Key>::insert_new(const Key& key)
             auto it_hash = general_hash_table.find(key_hir_del);
             Node& node_hir_del = it_hash -> second;
 
-            node_hir_del.q_position = Iterator{};
-            node_hir_del.status = Status::HIR_NO_RES;
-            node_hir_del.resident_flag = false;
-            node_hir_del.in_q_flag = false;
             if(!node_hir_del.in_s_flag)
             {
                 general_hash_table.erase(it_hash);
             } 
-            HIR_resident_count_--;
 
+            node_hir_del.q_position = Iterator{};
+            node_hir_del.status = Status::HIR_NO_RES;
+            node_hir_del.resident_flag = false;
+            node_hir_del.in_q_flag = false;
+            
+            HIR_resident_count_--;
             list_Q.pop_back();
         }
-            list_Q.push_front(key);
-            Node node{Status::HIR, true, true, true, list_S.begin(), list_Q.begin()};
-            general_hash_table.emplace(key, node);
-            HIR_resident_count_++;
+
+        list_Q.push_front(key);
+        Node node{Status::HIR, true, true, true, list_S.begin(), list_Q.begin()};
+        general_hash_table.emplace(key, node);
+        HIR_resident_count_++;
     }
     else
     {
@@ -140,11 +142,8 @@ void Lirs_cach<Key>::hit_hir_S_ell(Directory_Iterator hash_table_it)
 
     list_Q.splice(list_Q.begin(), list_S, demoted.s_position);// Узел бывшей нижней LIR переносим из S в начало Q
 
-    demoted.status = Status::HIR;
-    demoted.in_s_flag = false;
-    demoted.s_position = Iterator{};
-    demoted.in_q_flag = true;
-    demoted.q_position = list_Q.begin();
+    Node demoted_node{Status::HIR, true, false, true, Iterator{}, list_Q.begin()};
+    demoted = demoted_node;
 
     prune_S();
 }
@@ -306,8 +305,7 @@ Lirs_cach<Key>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity):
     LIR_count_(0),
     HIR_resident_count_(0)
 {
-    if(HIR_capacity > capacity ||
-       (capacity > 1 && (HIR_capacity == 0 || HIR_capacity == capacity)))
+    if(HIR_capacity > capacity || (capacity > 1 && (HIR_capacity == 0 || HIR_capacity == capacity)))
     {
         throw std::invalid_argument("LIRS: invalid HIR capacity");
     }
