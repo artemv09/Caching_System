@@ -1,5 +1,5 @@
-#ifndef LIRS
-#define LIRS
+#ifndef LIRS_
+#define LIRS_
 
 #include <iostream>
 #include <algorithm>

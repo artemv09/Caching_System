@@ -1,5 +1,5 @@
-#ifndef ARC
-#define ARC
+#ifndef ARC_
+#define ARC_
 
 #include <algorithm>
 #include <cassert>
