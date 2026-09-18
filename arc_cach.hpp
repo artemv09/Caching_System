@@ -51,8 +51,6 @@ class Arc_cach
 
         void delete_ell_list(Key_List& list_out);// Переносит конец T в соответствующую историю или удаляет хвост B.
 
-        // Перед загрузкой: None — новый ключ, B1/B2 — источник запроса.
-        // При возврате из истории p уже обновлён, ключ ещё находится в B.
         void cache_one_ell_clean(Type_list_save request_in);
 
     public:
@@ -134,7 +132,7 @@ void Arc_cach<Key>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//
             const auto delta = std::max(std::size_t{1}, B2_.size() / B1_.size());//TODO можно поменять на вариант из книги
             target_recent_size_ += std::min(delta, capacity_ - target_recent_size_);
 
-            cache_one_ell_clean(request_in);
+            cache_one_ell_clean(Type_list_save::B1);//TODO это спорный момент бля дай бог заработает
             T2_.splice(T2_.begin(), B1_, node.position);
             break;
         }
@@ -143,7 +141,7 @@ void Arc_cach<Key>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//
             const auto delta = std::max(std::size_t{1}, B1_.size() / B2_.size());
             target_recent_size_ -= std::min(delta, target_recent_size_);
 
-            cache_one_ell_clean(request_in);
+            cache_one_ell_clean(Type_list_save::B2);
             T2_.splice(T2_.begin(), B2_, node.position);
             break;
         }

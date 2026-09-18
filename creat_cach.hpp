@@ -47,6 +47,7 @@ using Cache_variant = std::variant
 >;
 
 std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& input);
+
 Type_Cach cache_type(const std::string& name);
 
 template <typename Key>
@@ -69,10 +70,10 @@ Cach_ptr<Key> create_cache_one_ell(const Cache_name_size& parameter_ell)
             return std::make_unique<Variant>(std::in_place_type<Two_Q_Cach<Key>>, parameter_ell.capacity);
 
         case (Type_Cach::ARC):
-            return std::make_unique<Variant>(std::in_place_type<Arc_cach<Key>>, parameter_ell.capacity, parameter_ell._hircapacity);
+            return std::make_unique<Variant>(std::in_place_type<Arc_cach<Key>>, parameter_ell.capacity);
 
         case (Type_Cach::LIRS):
-            return std::make_unique<Variant>(std::in_place_type<Lirs_cach<Key>>, parameter_ell.capacity, parameter_ell._hircapacity);
+            return std::make_unique<Variant>(std::in_place_type<Lirs_cach<Key>>, parameter_ell.capacity, parameter_ell.hir_capacity);
     }
     throw std::runtime_error("Unknown cache type");
 }
@@ -80,7 +81,7 @@ Cach_ptr<Key> create_cache_one_ell(const Cache_name_size& parameter_ell)
 template <typename Key>
 std::vector<Cach_ptr<Key>> create_cach(const std::vector<Cache_name_size>& cach_list_name_size)
 {
-    std::vector<Cach_ptr> general_cach;
+    std::vector<Cach_ptr<Key>> general_cach;
     general_cach.reserve(cach_list_name_size.size());
 
     for(const auto& cach_name_size : cach_list_name_size)

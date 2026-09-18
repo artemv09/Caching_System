@@ -10,11 +10,11 @@
 #include <cstddef>
 #include <algorithm>
 
-template <typename Key>
+template <typename Key, typename Value>
 class Lfu_cach
 {
     private:
-        using Key_List = std::list<Key>;
+        using Key_List = std::list<Value>;
         using Iterator = typename Key_List::iterator;
         struct Node
         {
@@ -32,13 +32,18 @@ class Lfu_cach
         
         void insert_new(const Key& key);//создать новый эллемент и запись в хеш таблице
         void evict_oldest();//удалить самый старый эллемент и запись в хеш таблице
-        void move_existing(Node& node_key);//переместить существующий эллемент
+        void move_existing(Node& node_key);//переместить существующий эллемент в начало
         
         Iterator new_ell_frequency_table(const Key& key);
         void relocation_frequency_table(Node& node_key);
         Key get_key_oldest(); 
 
     public:
+        //новые функции
+        Access_Result<Value> look_up(const Key& key);
+
+        //конец
+    
         explicit Lfu_cach();
         explicit Lfu_cach(std::size_t capacity);
 
@@ -58,8 +63,28 @@ class Lfu_cach
         }
 };
 
-template <typename Key>
-void Lfu_cach<Key>::insert_new(const Key& key)//создать новый эллемент и запись в хеш таблице
+template <typename Key, typename Value>
+Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
+{
+    if(capacity_ == 0)
+    {
+        return {false, Iterator{}};
+    }
+
+    auto found = hash_table.find(key);
+
+    if(found == hash_table.end())
+    {
+        return {false, Iterator{}};
+    }
+
+    move_existing(found -> second);
+
+    return {true, found -> second};
+}
+
+template <typename Key, typename Value>
+void Lfu_cach<Key, Value>::insert_new(const Key& key)//создать новый эллемент и запись в хеш таблице
 {
     lfu_cach.push_front(key);
     Iterator frequency_position = new_ell_frequency_table(key);
@@ -68,8 +93,8 @@ void Lfu_cach<Key>::insert_new(const Key& key)//создать новый элл
     hash_table.emplace(key, node);
 }
 
-template <typename Key>
-void Lfu_cach<Key>::relocation_frequency_table(Node& node_key)
+template <typename Key, typename Value>
+void Lfu_cach<Key, Value>::relocation_frequency_table(Node& node_key)
 {
     int key_frequency = node_key.frequency;
     int new_key_frequency = key_frequency + 1;
@@ -92,8 +117,8 @@ void Lfu_cach<Key>::relocation_frequency_table(Node& node_key)
     }
 }
 
-template <typename Key>
-typename Lfu_cach<Key>::Iterator Lfu_cach<Key>::new_ell_frequency_table(const Key& key)//добавление нового эллемента в frequency_table
+template <typename Key, typename Value>
+typename Lfu_cach<Key, Value>::Iterator Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавление нового эллемента в frequency_table
 {
     auto result = frequency_table.try_emplace(1);//если такого списка нет то она создаст
     auto& frequency_list = result.first -> second;
@@ -104,8 +129,8 @@ typename Lfu_cach<Key>::Iterator Lfu_cach<Key>::new_ell_frequency_table(const Ke
     return frequency_list.begin();
 }
 
-template <typename Key>
-void Lfu_cach<Key>::evict_oldest()//удалить самый старый эллемент и запись в хеш таблице
+template <typename Key, typename Value>
+void Lfu_cach<Key, Value>::evict_oldest()//удалить самый старый эллемент и запись в хеш таблице
 {
     Key min_frequency_key = get_key_oldest();
     Node& node_min_frequency = (hash_table.find(min_frequency_key)) -> second;
@@ -113,25 +138,25 @@ void Lfu_cach<Key>::evict_oldest()//удалить самый старый эл�
     hash_table.erase(min_frequency_key);//удалили из hash
 }
 
-template <typename Key>
-void Lfu_cach<Key>::move_existing(Node& node_key)//переместить существующий эллемент
+template <typename Key, typename Value>
+void Lfu_cach<Key, Value>::move_existing(Node& node_key)//переместить существующий эллемент
 {
     relocation_frequency_table(node_key);
     node_key.frequency++;//увеличили частоту на 1
 }
 
-template <typename Key>
-Lfu_cach<Key>::Lfu_cach(): capacity_(0), min_frequency(0)
+template <typename Key, typename Value>
+Lfu_cach<Key, Value>::Lfu_cach(): capacity_(0), min_frequency(0)
 {
 }
 
-template <typename Key>
-Lfu_cach<Key>::Lfu_cach(std::size_t capacity): capacity_(capacity), min_frequency(0)
+template <typename Key, typename Value>
+Lfu_cach<Key, Value>::Lfu_cach(std::size_t capacity): capacity_(capacity), min_frequency(0)
 {
 }
 
-template <typename Key>
-bool Lfu_cach<Key>::access(const Key& key)//функция для обедлинения всего в одну систему
+template <typename Key, typename Value>
+bool Lfu_cach<Key, Value>::access(const Key& key)//функция для обедлинения всего в одну систему
 {
     if(capacity_ == 0)
     {
@@ -158,8 +183,8 @@ bool Lfu_cach<Key>::access(const Key& key)//функция для обедлин
     return false;
 }
 
-template <typename Key>
-Key Lfu_cach<Key>::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта
+template <typename Key, typename Value>
+Key Lfu_cach<Key, Value>::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта
 {
     auto min_frequency_list_key = frequency_table.find(min_frequency);
     Key min_key = (min_frequency_list_key -> second).back();
