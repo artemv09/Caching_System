@@ -12,13 +12,15 @@
 #include <cassert>
 
 #include "work_cach.hpp"
+#include "crutch.hpp"
+
 
 
 template <typename Key, typename Value>
 class Lru_cach
 {
     private:
-        using Key_List = std::list<Value>;
+        using Key_List = std::list<Entry<Key, Value>>;
         using Iterator = typename Key_List::iterator;
 
         Key_List lru_cach; //сам кэш
@@ -32,6 +34,8 @@ class Lru_cach
     public:
         //здесь располагаются новые функции
         Access_Result<Value> look_up(const Key& key);
+        std::optional<Key> insert_value(const Key& key, const Value& value);
+        bool erase_key(const Key& key);
 
         //конец
         explicit Lru_cach();
@@ -52,6 +56,38 @@ class Lru_cach
             return capacity_;
         }              
 };
+
+template <typename Key, typename Value>
+std::optional<Key> Lru_cach<Key, Value>::insert_value(const Key& key, const Value& value)
+{
+
+    if (capacity_ == 0)
+    {
+       return key;
+    }
+
+    lru_cach.push_front(Entry{key, value});
+
+    try
+    {
+        hash_table.emplace(key, lru_cach.begin());
+    }
+    catch (...)
+    {
+        lru_cach.pop_front();
+        throw;
+    }
+.
+    if (lru_cach.size() <= capacity_)
+        return std::nullopt;
+
+    Key evicted_key = lru_cach.back().key;
+
+    hash_table.erase(evicted_key);
+    lru_cach.pop_back();
+
+    return evicted_key;
+}
 
 template <typename Key, typename Value>
 bool Lru_cach<Key, Value>::access(const Key& key)
@@ -79,6 +115,20 @@ bool Lru_cach<Key, Value>::access(const Key& key)
     }
 
     return false;
+}
+
+template <typename Key, typename Value>
+bool Lru_cach<Key, Value>::erase_key(const Key& key)
+{
+    auto it = hash_table.find(key);
+
+    if (it == hash_table.end())
+        return false;
+
+    lru_cach.erase(it->second);
+    hash_table.erase(it);
+
+    return true;
 }
 
 template <typename Key, typename Value>

@@ -35,22 +35,24 @@ class Multi_Level_Cach
         General_Cach general_cach;
         const Big_Data* big_data;
 
-        Access_Result<Value> access_inclusive(const Key& key);
+        Public_Access_Result<Value> access_inclusive(const Key& key);
 
-        Access_Result<Value> access_exclusive(const Key& key);
+        Public_Access_Result<Value> access_exclusive(const Key& key);
 
         void push_down(std::size_t level, Entry<Key, Value> entry);
 
         void invalidate_above(std::size_t level, const Key& key);
 
-        const Value& get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
+        void redistribution_cach_ell(const Value& value, std::size);
+
+        const Value get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
         {
             return big_data -> at(key);
         }
 
     public:
 
-        Access_Result<Value> acess(const Key& key)
+        Public_Access_Result<Value> acess(const Key& key)
         {
             if constexpr (Mode == Cach_Mode::Inclusive)
             {
@@ -97,13 +99,43 @@ Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::access_incl
                                 *general_cach.at(level_cach));
         if(result_look_up.hit)
         {
-            //вставить во все кэши выше и вернуть 
-
-            return result_look_up;
+            redistribution_cach_ell(*(result_look_up.found_ell), level_cach, key);
+            return {true, *(result_look_up.found_ell)};
         }
-        else
+        level_cach++;
+    }
+
+    Value value = get_long_data(key);
+    redistribution_cach_ell(value, level_cach, key);    
+    return {false, value};
+}
+
+template<
+    typename Key,
+    typename Value,
+    Cach_Mode Mode,
+    bool Store_Data
+>
+void Multi_Level_Cach<Key, Value, Mode, Store_Data>::redistribution_cach_ell(const Value& value, std::size level_cach, const Key& key)
+{
+    if(level_cach == 0)
+    {
+        return;
+    }
+    
+    while(level_cach > 0)
+    {
+        level_cach--;
+        std::optional<Key> key_erase = std::visit([&](auto& cache) -> std::optional<Key> {return insert_value.cache.(key, value);}, *general_cach.at(level_cach));
+        
+        if(key_earse == std::nullopt)
         {
-            //нужно достать из базы данных и вернуть
+            return;
+        }
+        
+        for(int count = level_cach - 1; count >= 0; count --)
+        {
+            std::visit([&](auto& cache) -> bool {return erase_key.cache.(key);}, *general_cach.at(level_cach));
         }
     }
 }

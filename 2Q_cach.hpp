@@ -18,7 +18,7 @@ template <typename Key, typename Value>
 class Two_Q_Cach
 {
     private://в принципе я могу использовать интерфейс LRU но это нарушит его инкапсуляци
-        using Key_List = std::list<Value>;
+        using Key_List = std::list<Entry<Key, Value>;
         using Iterator = typename Key_List::iterator;
 
         using Directory = std::unordered_map<Key, Iterator>;
