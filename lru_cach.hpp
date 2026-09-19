@@ -58,7 +58,7 @@ bool Lru_cach<Key, Value>::access(const Key& key)
 {
     if(capacity_ == 0)
     {
-        return {false, Iterator{}};
+        return false;
     }
 
     auto found_ell = hash_table.find(key);
@@ -86,19 +86,19 @@ Access_Result<Value> Lru_cach<Key, Value>::look_up(const Key& key)
 {
     if(capacity_ == 0)
     {
-        return false;
+        return {false, nullptr};
     }
 
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {false, Iterator{}};
+        return {false, &(*found -> second)};
     }
 
     make_recent(found -> second);
 
-    return {true, found -> second};
+    return {true, &(*found -> second)};
 }
 
 template <typename Key, typename Value>

@@ -32,7 +32,6 @@ template<
     Cach_Mode Mode,
     bool Store_Data
 >
-
 class Multi_Level_Cach
 {
     private:

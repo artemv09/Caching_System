@@ -68,19 +68,19 @@ Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
 {
     if(capacity_ == 0)
     {
-        return {false, Iterator{}};
+        return {false, nullptr};
     }
 
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {false, Iterator{}};
+        return {false, nullptr};
     }
 
     move_existing(found -> second);
 
-    return {true, found -> second};
+    return {true, &(*found -> second)};
 }
 
 template <typename Key, typename Value>
