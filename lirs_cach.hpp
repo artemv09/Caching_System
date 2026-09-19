@@ -10,11 +10,11 @@
 #include <stdexcept>
 #include <unordered_map>
 
-template <typename Key>
+template <typename Key, typename Value>
 class Lirs_cach
 {
     private:
-        using Key_List = std::list<Key>;
+        using Key_List = std::list<Value>;
         using Iterator = typename Key_List::iterator;
 
         std::size_t capacity_;
@@ -61,6 +61,9 @@ class Lirs_cach
         void prune_S();//берет и очищает низ LIR от HIR
     
     public:
+        //новые функции
+        Access_Result<Value> look_up(const Key& key);
+        //конец
         explicit Lirs_cach(std::size_t capacity, std::size_t HIR_capacity);
         explicit Lirs_cach();
 
@@ -80,8 +83,71 @@ class Lirs_cach
         }
 };
 
-template <typename Key>
-void Lirs_cach<Key>::insert_new(const Key& key)
+template <typename Key, typename Value>
+Access_Result<Value> Lirs_cach<Key, Value>::look_up(const Key& key)
+{
+    if(capacity_ == 0)
+    {
+        return {false, nullptr};
+    }
+
+    auto found = general_hash_table.find(key);
+
+    if(found == general_hash_table.end())
+    {
+        return {false, nullptr};
+    }
+
+    Node& node = found -> second;
+
+    // Ключ есть только как история, самой страницы в кэше нет.
+    if(node.status == Status::HIR_NO_RES || !node.resident_flag)
+    {
+        return {false, nullptr};
+    }
+
+    Value* value = node.value;
+
+    if(capacity_ == 1)
+    {
+        return {true, value};
+    }
+
+    switch(node.status)
+    {
+        case(Status::LIR):
+        {
+            move_to_top_S(found);
+            prune_S();
+
+            return {true, value};
+        }
+
+        case(Status::HIR):
+        {
+            if(node.in_s_flag)
+            {
+                hit_hir_S_ell(found);
+            }
+            else
+            {
+                hit_hir_Q_ell(found);
+            }
+
+            return {true, value};
+        }
+
+        case(Status::HIR_NO_RES):
+        {
+            return {false, nullptr};
+        }
+    }
+
+    return {false, nullptr};
+}
+
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::insert_new(const Key& key)
 {
     list_S.push_front(key);//новый эллемент всегда кладется в S
 
@@ -120,14 +186,14 @@ void Lirs_cach<Key>::insert_new(const Key& key)
     }
 }
 
-template <typename Key>
-void Lirs_cach<Key>::move_to_top_S(Directory_Iterator hash_table_it)
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::move_to_top_S(Directory_Iterator hash_table_it)
 {   
     list_S.splice(list_S.begin(), list_S, hash_table_it -> second.s_position);
 }
 
-template <typename Key>
-void Lirs_cach<Key>::hit_hir_S_ell(Directory_Iterator hash_table_it)
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::hit_hir_S_ell(Directory_Iterator hash_table_it)
 {   
     Node& hit_hir_node = hash_table_it -> second; 
 
@@ -148,8 +214,8 @@ void Lirs_cach<Key>::hit_hir_S_ell(Directory_Iterator hash_table_it)
     prune_S();
 }
 
-template <typename Key>
-void Lirs_cach<Key>::erase_from_Q(Directory_Iterator hash_table_it)
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::erase_from_Q(Directory_Iterator hash_table_it)
 {   
     auto& node = hash_table_it -> second;
 
@@ -159,8 +225,8 @@ void Lirs_cach<Key>::erase_from_Q(Directory_Iterator hash_table_it)
     node.in_q_flag = false;
 }
 
-template <typename Key>
-void Lirs_cach<Key>::prune_S()
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::prune_S()
 {
     while(!list_S.empty())
     {
@@ -184,8 +250,8 @@ void Lirs_cach<Key>::prune_S()
     }
 }
 
-template <typename Key>
-void Lirs_cach<Key>::hit_hir_Q_ell(Directory_Iterator hash_table_it)
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::hit_hir_Q_ell(Directory_Iterator hash_table_it)
 {
     auto& node = hash_table_it -> second;
 
@@ -196,8 +262,8 @@ void Lirs_cach<Key>::hit_hir_Q_ell(Directory_Iterator hash_table_it)
     list_Q.splice(list_Q.begin(), list_Q, node.q_position);
 }
 
-template <typename Key>
-void Lirs_cach<Key>::hit_no_resident(Directory_Iterator hash_table_it)
+template <typename Key, typename Value>
+void Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator hash_table_it)
 {
     assert(LIR_capacity_ == LIR_count_);
     Node& node_hit = hash_table_it -> second;
@@ -236,8 +302,8 @@ void Lirs_cach<Key>::hit_no_resident(Directory_Iterator hash_table_it)
     prune_S();
 }
 
-template <typename Key>
-bool Lirs_cach<Key>::access(const Key& key)
+template <typename Key, typename Value>
+bool Lirs_cach<Key, Value>::access(const Key& key)
 {
     if(capacity_ == 0)
     {
@@ -296,8 +362,8 @@ bool Lirs_cach<Key>::access(const Key& key)
     return false;
 }
 
-template <typename Key>
-Lirs_cach<Key>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity): 
+template <typename Key, typename Value>
+Lirs_cach<Key, Value>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity): 
     capacity_(capacity),
     size_(0),
     LIR_capacity_(0),
@@ -319,8 +385,8 @@ Lirs_cach<Key>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity):
     general_hash_table.reserve(capacity_ * 2);//зарезервировал чтобы меньше выделять по мере выполнения
 }
 
-template <typename Key>
-Lirs_cach<Key>::Lirs_cach(): Lirs_cach(0, 0)
+template <typename Key, typename Value>
+Lirs_cach<Key, Value>::Lirs_cach(): Lirs_cach(0, 0)
 {
 }
 

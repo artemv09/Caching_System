@@ -23,7 +23,7 @@ template<typename Value>
 struct Access_Result
 {
     bool hit;
-    typename std::list<Value>::iterator iterator_found_ell;//будет {} если не нашли и будет на список если нашли
+    Value* found_ell;//будет {} если не нашли и будет на список если нашли
 };
 
 template<
@@ -94,7 +94,14 @@ template<
 >
 Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::access_inclusive(const Key& key)
 {
-    return;
+    //сначал проверим а вообще есть ои эллемент в кэше
+    std::size_t level_cach = 0;
+    while(level_cach != general_cach.size())
+    {
+        Access_Result<Value> result = std::visit([&](auto& cache) -> Access_Result<Value>
+                                {return cache.look_up(key);},
+                                *general_cach.at(level_cach));
+    }
 }
 
 

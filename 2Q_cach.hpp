@@ -12,11 +12,11 @@
 
 #include "lfu_cach.hpp"
 //TODO - когда будем добалять шаблоны испольщовать using для карты и списков
-template <typename Key>
+template <typename Key, typename Value>
 class Two_Q_Cach
 {
     private://в принципе я могу использовать интерфейс LRU но это нарушит его инкапсуляци
-        using Key_List = std::list<Key>;
+        using Key_List = std::list<Value>;
         using Iterator = typename Key_List::iterator;
 
         using Directory = std::unordered_map<Key, Iterator>;
@@ -42,6 +42,10 @@ class Two_Q_Cach
         void rules_displacment();
                            
     public:
+        //новые функции
+        Access_Result<Value> look_up(const Key& key)
+
+        //конец
         explicit Two_Q_Cach();
         explicit Two_Q_Cach(std::size_t capacity);
 
@@ -62,8 +66,35 @@ class Two_Q_Cach
         }
 };
 
-template <typename Key>
-void Two_Q_Cach<Key>::delet_hach_list_last(Directory& hach_table, Key_List& list)
+template <typename Key, typename Value>
+Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
+{
+    if(capacity_ == 0)
+    {
+        return {false, nullptr};
+    }
+
+    auto found_am = am_table.find(key);
+
+    if(found_am != am_table.end())
+    {
+        make_recent_am(found_am -> second);
+
+        return {true, &(*found_am -> second)};
+    }
+
+    auto found_a1in = a1in_table.find(key);
+
+    if(found_a1in != a1in_table.end())
+    {
+        return {true, &(*found_a1in -> second)};
+    }
+
+    return {false, nullptr};
+}
+
+template <typename Key, typename Value>
+void Two_Q_Cach<Key, Value>::delet_hach_list_last(Directory& hach_table, Key_List& list)
 {
     int key = list.back();
     auto it = hach_table.find(key);
@@ -76,31 +107,31 @@ void Two_Q_Cach<Key>::delet_hach_list_last(Directory& hach_table, Key_List& list
     hach_table.erase(it);
 }
 
-template <typename Key>
-void Two_Q_Cach<Key>::make_recent_am(Iterator position)// перенести существующий узел списка в head
+template <typename Key, typename Value>
+void Two_Q_Cach<Key, Value>::make_recent_am(Iterator position)// перенести существующий узел списка в head
 {
     am.splice(am.begin(), am, position);
 }
 
-template <typename Key>
-void Two_Q_Cach<Key>::insert_new(const Key& key, Directory& hach_table, Key_List& list)// добавить новый узел списка и соответствующую запись в хеш-таблицу
+template <typename Key, typename Value>
+void Two_Q_Cach<Key, Value>::insert_new(const Key& key, Directory& hach_table, Key_List& list)// добавить новый узел списка и соответствующую запись в хеш-таблицу
 {
     list.push_front(key);
     hach_table.emplace(key, list.begin());
 }
 
-template <typename Key>
-Two_Q_Cach<Key>::Two_Q_Cach(): capacity_(0)
+template <typename Key, typename Value>
+Two_Q_Cach<Key, Value>::Two_Q_Cach(): capacity_(0)
 {
 }
 
-template <typename Key>
-Two_Q_Cach<Key>::Two_Q_Cach(std::size_t capacity): capacity_(capacity), Kout(capacity / 2), Kin(capacity / 4)
+template <typename Key, typename Value>
+Two_Q_Cach<Key, Value>::Two_Q_Cach(std::size_t capacity): capacity_(capacity), Kout(capacity / 2), Kin(capacity / 4)
 {
 }
 
-template <typename Key>
-bool Two_Q_Cach<Key>::access(const Key& key)
+template <typename Key, typename Value>
+bool Two_Q_Cach<Key, Value>::access(const Key& key)
 {
     if(capacity_ == 0)
     {
@@ -139,14 +170,14 @@ bool Two_Q_Cach<Key>::access(const Key& key)
     return false;
 }
 
-template <typename Key>
-bool Two_Q_Cach<Key>::check(const Key& key, Directory& hach_table)//проверка наличия ключа в таблице
+template <typename Key, typename Value>
+bool Two_Q_Cach<Key, Value>::check(const Key& key, Directory& hach_table)//проверка наличия ключа в таблице
 {
     return hach_table.find(key) != hach_table.end();
 }
 
-template <typename Key>
-void Two_Q_Cach<Key>::rules_displacment()//правила для выброса эллемента из am и a1in
+template <typename Key, typename Value>
+void Two_Q_Cach<Key, Value>::rules_displacment()//правила для выброса эллемента из am и a1in
 {
     if(size() == capacity_)
     {

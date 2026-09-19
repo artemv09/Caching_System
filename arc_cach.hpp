@@ -9,11 +9,11 @@
 #include <stdexcept>
 #include <unordered_map>
 
-template <typename Key>
+template <typename Key, typename Value>
 class Arc_cach
 {
     private:
-        using Key_List = std::list<Key>;
+        using Key_List = std::list<Value>;
         using Iterator = typename Key_List::iterator;
 
         enum class Type_list_save
@@ -54,6 +54,10 @@ class Arc_cach
         void cache_one_ell_clean(Type_list_save request_in);
 
     public:
+        //новые функции
+        Access_Result<Value> look_up(const Key& key)
+
+        //конец
         explicit Arc_cach(std::size_t capacity);
         explicit Arc_cach();
 
@@ -78,18 +82,68 @@ class Arc_cach
         }
 };
 
-template <typename Key>
-Arc_cach<Key>::Arc_cach(std::size_t capacity):capacity_(capacity), target_recent_size_(0)
+template <typename Key, typename Value>
+Access_Result<Value> Arc_cach<Key, Value>::look_up(const Key& key)
+{
+    if(capacity_ == 0)
+    {
+        return {false, nullptr};
+    }
+
+    auto found = general_hash_table.find(key);
+
+    if(found == general_hash_table.end())
+    {
+        return {false, nullptr};
+    }
+
+    auto& node = found -> second;
+
+    switch(node.type_list)
+    {
+        case(Type_list_save::T1):
+        {
+            T2_.splice(T2_.begin(), T1_, node.position);
+
+            node.type_list = Type_list_save::T2;
+
+            return {true, &(*node.position)};
+        }
+
+        case(Type_list_save::T2):
+        {
+            T2_.splice(T2_.begin(), T2_, node.position);
+
+            return {true, &(*node.position)};
+        }
+
+        case(Type_list_save::B1):
+        case(Type_list_save::B2):
+        {
+            return {false, nullptr};
+        }
+
+        case(Type_list_save::None):
+        {
+            return {false, nullptr};
+        }
+    }
+
+    return {false, nullptr};
+}
+
+template <typename Key, typename Value>
+Arc_cach<Key, Value>::Arc_cach(std::size_t capacity):capacity_(capacity), target_recent_size_(0)
 {
 }
 
-template <typename Key>
-Arc_cach<Key>::Arc_cach(): Arc_cach(0)
+template <typename Key, typename Value>
+Arc_cach<Key, Value>::Arc_cach(): Arc_cach(0)
 {
 }
 
-template <typename Key>
-void Arc_cach<Key>::insert_new(const Key& key)//сохдаем новые эллемент в T1 и запись в хеш таблице
+template <typename Key, typename Value>
+void Arc_cach<Key, Value>::insert_new(const Key& key)//сохдаем новые эллемент в T1 и запись в хеш таблице
 {
     T1_.push_front(key);
 
@@ -109,14 +163,14 @@ void Arc_cach<Key>::insert_new(const Key& key)//сохдаем новые элл
     }
 }
 
-template <typename Key>
-void Arc_cach<Key>::move_begin_T2(Iterator position)
+template <typename Key, typename Value>
+void Arc_cach<Key, Value>::move_begin_T2(Iterator position)
 {
     T2_.splice(T2_.begin(), T2_, position);
 }
 
-template <typename Key>
-void Arc_cach<Key>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//переместить эллемент в T2 ЭТО ГЛАВАНАЯ ФУНКЦИЯ
+template <typename Key, typename Value>
+void Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//переместить эллемент в T2 ЭТО ГЛАВАНАЯ ФУНКЦИЯ
 {
     auto& node = hash_iterator -> second;
 
@@ -162,8 +216,8 @@ void Arc_cach<Key>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator)//
     node.type_list = Type_list_save::T2;
 }
 
-template <typename Key>
-void Arc_cach<Key>::delete_ell_list(Key_List& list_out)//понижение одного конкретного эллемента до B1 или B2 передаем что нужно понизить T1 T2 поницаем B1 B2 удаляем
+template <typename Key, typename Value>
+void Arc_cach<Key, Value>::delete_ell_list(Key_List& list_out)//понижение одного конкретного эллемента до B1 или B2 передаем что нужно понизить T1 T2 поницаем B1 B2 удаляем
 {
     assert(!list_out.empty());
 
@@ -189,8 +243,8 @@ void Arc_cach<Key>::delete_ell_list(Key_List& list_out)//понижение од
     }
 }
 
-template <typename Key>
-void Arc_cach<Key>::cache_one_ell_clean(Type_list_save request_in)//отвечает за выбор логики удаления и перемещения эллементов
+template <typename Key, typename Value>
+void Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save request_in)//отвечает за выбор логики удаления и перемещения эллементов
 {
     if(capacity_ == 0)
     {        
@@ -240,8 +294,8 @@ void Arc_cach<Key>::cache_one_ell_clean(Type_list_save request_in)//отвеча
     }
 }
 
-template <typename Key>
-bool Arc_cach<Key>::access(const Key& key)
+template <typename Key, typename Value>
+bool Arc_cach<Key, Value>::access(const Key& key)
 {
     if(capacity_ == 0)
     {
