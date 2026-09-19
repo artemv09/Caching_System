@@ -55,7 +55,7 @@ using Cach_ptr = std::unique_ptr<Cache_variant<Key, Value>>;
 template <typename Key, typename Value>
 Cach_ptr<Key, Value> create_cache_one_ell(const Cache_name_size& parameter_ell)
 {
-    using Variant = Cache_variant<Key>;
+    using Variant = Cache_variant<Key, Value>;
 
     switch (cache_type(parameter_ell.name_cach))
     {

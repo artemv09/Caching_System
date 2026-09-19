@@ -11,6 +11,8 @@
 #include <algorithm>
 
 #include "lfu_cach.hpp"
+#include "crutch.hpp"
+
 //TODO - когда будем добалять шаблоны испольщовать using для карты и списков
 template <typename Key, typename Value>
 class Two_Q_Cach
@@ -43,7 +45,7 @@ class Two_Q_Cach
                            
     public:
         //новые функции
-        Access_Result<Value> look_up(const Key& key)
+        Access_Result<Value> look_up(const Key& key):
 
         //конец
         explicit Two_Q_Cach();
@@ -67,7 +69,7 @@ class Two_Q_Cach
 };
 
 template <typename Key, typename Value>
-Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
+Access_Result<Value> Two_Q_Cach<Key, Value>::look_up(const Key& key)
 {
     if(capacity_ == 0)
     {

@@ -93,7 +93,7 @@ Access_Result<Value> Lru_cach<Key, Value>::look_up(const Key& key)
 
     if(found == hash_table.end())
     {
-        return {false, &(*found -> second)};
+        return {false, nullptr};
     }
 
     make_recent(found -> second);

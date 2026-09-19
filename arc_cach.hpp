@@ -55,7 +55,7 @@ class Arc_cach
 
     public:
         //новые функции
-        Access_Result<Value> look_up(const Key& key)
+        Access_Result<Value> look_up(const Key& key);
 
         //конец
         explicit Arc_cach(std::size_t capacity);

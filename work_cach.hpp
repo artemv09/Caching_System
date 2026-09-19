@@ -11,19 +11,13 @@
 #include <unordered_map>
 
 #include "creat_cach.hpp"
+#include "crutch.hpp"
 
 
 enum class Cach_Mode
 {
     Inclusive,
     Exclusive
-};
-
-template<typename Value>
-struct Access_Result
-{
-    bool hit;
-    Value* found_ell;//будет {} если не нашли и будет на список если нашли
 };
 
 template<
@@ -98,9 +92,19 @@ Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::access_incl
     std::size_t level_cach = 0;
     while(level_cach != general_cach.size())
     {
-        Access_Result<Value> result = std::visit([&](auto& cache) -> Access_Result<Value>
+        Access_Result<Value> result_look_up = std::visit([&](auto& cache) -> Access_Result<Value>
                                 {return cache.look_up(key);},
                                 *general_cach.at(level_cach));
+        if(result_look_up.hit)
+        {
+            //вставить во все кэши выше и вернуть 
+
+            return result_look_up;
+        }
+        else
+        {
+            //нужно достать из базы данных и вернуть
+        }
     }
 }
 

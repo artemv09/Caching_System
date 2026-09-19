@@ -80,7 +80,7 @@ Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
 
     move_existing(found -> second);
 
-    return {true, &(*found -> second)};
+    return {true, &(*found -> second.position)};
 }
 
 template <typename Key, typename Value>
