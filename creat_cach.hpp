@@ -95,5 +95,4 @@ std::vector<Cach_ptr<Key, Value>> create_cach(const std::vector<Cache_name_size>
 }
 
 
-
 #endif 
