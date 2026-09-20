@@ -9,9 +9,9 @@
 #include <iterator>
 #include <cstddef>
 #include <algorithm>
+#include <optional>
 
 #include "crutch.hpp"
-
 
 template <typename Key, typename Value>
 class Lfu_cach
@@ -19,25 +19,30 @@ class Lfu_cach
     private:
         using Key_List = std::list<Entry<Key, Value>>;
         using Iterator = typename Key_List::iterator;
+
+        using Frequency_List = std::list<Key>;
+        using Frequency_Iterator = typename Frequency_List::iterator;
+
         struct Node
         {
             int frequency;// частота
             Iterator position;
-            Iterator frequency_position;//позиция в frequency 
+            Frequency_Iterator frequency_position;//позиция в frequency 
         };
         //можно это запихнуть в один ассоциативный конетейнер но это буде  очень нагромаждено
         Key_List lfu_cach;
+
         std::unordered_map<Key, Node> hash_table;// здесь хранятится позиция и частота
-        std::unordered_map<int, Key_List> frequency_table;// нужно для опредения наименьшей частоты
+        std::unordered_map<int, Frequency_List> frequency_table;// нужно для опредения наименьшей частоты
 
         std::size_t capacity_;
         int min_frequency;
         
-        void insert_new(const Key& key);//создать новый эллемент и запись в хеш таблице
+        //void insert_new(const Key& key);//создать новый эллемент и запись в хеш таблице
         void evict_oldest();//удалить самый старый эллемент и запись в хеш таблице
         void move_existing(Node& node_key);//переместить существующий эллемент в начало
         
-        Iterator new_ell_frequency_table(const Key& key);
+        Frequency_Iterator new_ell_frequency_table(const Key& key);
         void relocation_frequency_table(Node& node_key);
         Key get_key_oldest(); 
 
@@ -54,7 +59,7 @@ class Lfu_cach
         Lfu_cach(const Lfu_cach&) = delete;
         Lfu_cach& operator=(const Lfu_cach&) = delete;
 
-        bool access(const Key& key);//функция для обединения всего в одну систему;
+        //bool access(const Key& key);//функция для обединения всего в одну систему;
 
         std::size_t size() const noexcept
         {
@@ -69,77 +74,71 @@ class Lfu_cach
 
 template <typename Key, typename Value>
 std::optional<Key> Lfu_cach<Key, Value>::insert_value(const Key& key, const Value& value)
+template <typename Key, typename Value>
+void Lfu_cach<Key, Value>::insert_new(
+    const Key& key,
+    const Value& value)
 {
-    // По контракту функция вызывается только после miss.
     assert(hash_table.find(key) == hash_table.end());
 
-    if (capacity_ == 0)
-        return key;
+    // 1. Сначала кладём реальные данные в основной список кэша.
+    lfu_cach.push_front(Entry<Key, Value>{key, value});
 
-    std::optional<Key> evicted_key;
-
-    // Если кэш заполнен, заранее определяем жертву.
-    if (hash_table.size() == capacity_)
-    {
-        auto freq_it = frequency_table.find(min_frequency_);
-
-        assert(freq_it != frequency_table.end());
-        assert(!freq_it->second.empty());
-
-        // Самый старый среди элементов с минимальной частотой.
-        evicted_key = freq_it->second.back();
-    }
-
-    // Сначала создаём сам Entry.
-    lfu_cache.push_front(Entry{key, value});
-
-    auto cache_position = lfu_cache.begin();
-
-    // Новый элемент всегда имеет frequency = 1.
-    auto& frequency_one = frequency_table[1];
+    auto cache_position = lfu_cach.begin();
 
     try
     {
-        frequency_one.push_front(key);
+        // 2. Новый элемент всегда имеет частоту 1.
+        auto [freq_it, inserted] =
+            frequency_table.try_emplace(1);
+
+        auto& frequency_list = freq_it->second;
+
+        // Среди элементов с frequency = 1
+        // новый становится самым "свежим".
+        frequency_list.push_front(key);
+
+        auto frequency_position = frequency_list.begin();
+
+        try
+        {
+            // 3. Связываем key со всеми необходимыми данными.
+            auto [hash_it, hash_inserted] =
+                hash_table.emplace(
+                    key,
+                    Node{
+                        1,
+                        cache_position,
+                        frequency_position
+                    }
+                );
+
+            assert(hash_inserted);
+        }
+        catch (...)
+        {
+            // hash_table вставить не удалось —
+            // откатываем frequency_table.
+            frequency_list.erase(frequency_position);
+
+            if(frequency_list.empty())
+            {
+                frequency_table.erase(freq_it);
+            }
+
+            throw;
+        }
     }
     catch (...)
     {
-        lfu_cache.pop_front();
-
-        if (frequency_one.empty())
-            frequency_table.erase(1);
+        // Если что-то сломалось после вставки в lfu_cach,
+        // возвращаем основной список в исходное состояние.
+        lfu_cach.erase(cache_position);
 
         throw;
     }
 
-    auto frequency_position = frequency_one.begin();
-
-    try
-    {
-        auto [it, inserted] = hash_table.emplace(key, Node {1, cache_position, frequency_position});
-
-    }
-    catch (...)
-    {
-        frequency_one.erase(frequency_position);
-        lfu_cache.erase(cache_position);
-
-        if (frequency_one.empty())
-            frequency_table.erase(1);
-
-        throw;
-    }
-
-    // После вставки нового элемента минимальная частота всегда 1.
-    min_frequency_ = 1;
-
-    // Теперь безопасно удаляем старую жертву.
-    if(evicted_key)
-    {
-        erase_key(*evicted_key);
-    }
-
-    return evicted_key;
+    min_frequency = 1;
 }
 
 template <typename Key, typename Value>
@@ -214,15 +213,15 @@ Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
     return {true, &(*found -> second.position)};
 }
 
-template <typename Key, typename Value>
-void Lfu_cach<Key, Value>::insert_new(const Key& key)//создать новый эллемент и запись в хеш таблице
-{
-    lfu_cach.push_front(key);
-    Iterator frequency_position = new_ell_frequency_table(key);
-    Node node{1, lfu_cach.begin(), frequency_position};
+// template <typename Key, typename Value>
+// void Lfu_cach<Key, Value>::insert_new(const Key& key, const Value& value)//создать новый эллемент и запись в хеш таблице
+// {
+//     lfu_cach.push_front(key);
+//     Iterator frequency_position = new_ell_frequency_table(key);
+//     Node node{1, lfu_cach.begin(), frequency_position};
 
-    hash_table.emplace(key, node);
-}
+//     hash_table.emplace(key, node);
+// }
 
 template <typename Key, typename Value>
 void Lfu_cach<Key, Value>::relocation_frequency_table(Node& node_key)
@@ -286,45 +285,47 @@ Lfu_cach<Key, Value>::Lfu_cach(std::size_t capacity): capacity_(capacity), min_f
 {
 }
 
-template <typename Key, typename Value>
-bool Lfu_cach<Key, Value>::access(const Key& key)//функция для обедлинения всего в одну систему
-{
-    if(capacity_ == 0)
-    {
-        return false;
-    }
+// template <typename Key, typename Value>
+// bool Lfu_cach<Key, Value>::access(const Key& key)//функция для обедлинения всего в одну систему
+// {
+//     if(capacity_ == 0)
+//     {
+//         return false;
+//     }
 
-    auto found_ell = hash_table.find(key);
+//     auto found_ell = hash_table.find(key);
 
-    if(found_ell != hash_table.end())
-    {
-        move_existing(found_ell -> second);
-        return true;
-    }
+//     if(found_ell != hash_table.end())
+//     {
+//         move_existing(found_ell -> second);
+//         return true;
+//     }
 
-    if(lfu_cach.size() == capacity_)
-    {
-        evict_oldest();
-        insert_new(key);
-        return false;
-    }
+//     if(lfu_cach.size() == capacity_)
+//     {
+//         evict_oldest();
+//         insert_new(key);
+//         return false;
+//     }
 
-    insert_new(key);
+//     insert_new(key);
 
-    return false;
-}
+//     return false;
+// }
 
 template <typename Key, typename Value>
 Key Lfu_cach<Key, Value>::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта
 {
     auto min_frequency_list_key = frequency_table.find(min_frequency);
     Key min_key = (min_frequency_list_key -> second).back();
+
     (min_frequency_list_key -> second).pop_back();//удаляем этот эллемент из таблицы 
     
     if (min_frequency_list_key -> second.empty())
     {
         frequency_table.erase(min_frequency_list_key);
     }
+
     return min_key; 
 }
 

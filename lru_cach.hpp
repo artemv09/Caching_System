@@ -10,8 +10,8 @@
 #include <cstddef>
 #include <algorithm>
 #include <cassert>
+#include <optional>
 
-#include "work_cach.hpp"
 #include "crutch.hpp"
 
 
@@ -28,8 +28,8 @@ class Lru_cach
         std::size_t capacity_;
         
         void make_recent(Iterator position);// перенести существующий узел списка в head
-        void evict_oldest();// удалить самый давний элемент из списка и хеш-таблицы
-        void insert_new(const Key& key);// добавить новый узел списка и соответствующую запись в хеш-таблицу
+        Key evict_oldest();// удалить самый давний элемент из списка и хеш-таблицы
+        //void insert_new(const Key&  key, const Value& value);// добавить новый узел списка и соответствующую запись в хеш-таблицу
 
     public:
         //здесь располагаются новые функции
@@ -44,7 +44,7 @@ class Lru_cach
         Lru_cach(const Lru_cach&) = delete;
         Lru_cach& operator=(const Lru_cach&) = delete;
 
-        bool access(const Key& key);//функция для обединения всего в одну систему
+        //bool access(const Key& key);//функция для обединения всего в одну систему
 
         std::size_t size() const noexcept
         {
@@ -77,45 +77,42 @@ std::optional<Key> Lru_cach<Key, Value>::insert_value(const Key& key, const Valu
         lru_cach.pop_front();
         throw;
     }
-.
-    if (lru_cach.size() <= capacity_)
+
+    if(lru_cach.size() <= capacity_)
+    {
         return std::nullopt;
+    }
 
-    Key evicted_key = lru_cach.back().key;
-
-    hash_table.erase(evicted_key);
-    lru_cach.pop_back();
-
-    return evicted_key;
+    return evict_oldest();
 }
 
-template <typename Key, typename Value>
-bool Lru_cach<Key, Value>::access(const Key& key)
-{
-    if(capacity_ == 0)
-    {
-        return false;
-    }
+// template <typename Key, typename Value>
+// bool Lru_cach<Key, Value>::access(const Key& key)//TODO хз можно удалить вообще
+// {
+//     if(capacity_ == 0)
+//     {
+//         return false;
+//     }
 
-    auto found_ell = hash_table.find(key);
+//     auto found_ell = hash_table.find(key);
 
-    if(found_ell != hash_table.end())
-    {
-        make_recent(found_ell -> second);
-        //found_ell -> second = lru_cach.begin(); вроде не нужно
-        return true;
-    }
+//     if(found_ell != hash_table.end())
+//     {
+//         make_recent(found_ell -> second);
+//         //found_ell -> second = lru_cach.begin(); вроде не нужно
+//         return true;
+//     }
 
-    insert_new(key);
+//     insert_new(key, value);
 
-    if(lru_cach.size() > capacity_)
-    {
-        evict_oldest();
-        return false;
-    }
+//     if(lru_cach.size() > capacity_)
+//     {
+//         evict_oldest();
+//         return false;
+//     }
 
-    return false;
-}
+//     return false;
+// }
 
 template <typename Key, typename Value>
 bool Lru_cach<Key, Value>::erase_key(const Key& key)
@@ -125,7 +122,7 @@ bool Lru_cach<Key, Value>::erase_key(const Key& key)
     if (it == hash_table.end())
         return false;
 
-    lru_cach.erase(it->second);
+    lru_cach.erase(it -> second);
     hash_table.erase(it);
 
     return true;
@@ -148,7 +145,8 @@ Access_Result<Value> Lru_cach<Key, Value>::look_up(const Key& key)
 
     make_recent(found -> second);
 
-    return {true, &(*found -> second)};
+    Entry<Key, Value>& entry = *(found -> second);
+    return {true, &entry.value};
 }
 
 template <typename Key, typename Value>
@@ -158,20 +156,30 @@ void Lru_cach<Key, Value>::make_recent(Iterator position)// перенести �
 }
 
 template <typename Key, typename Value>
-void Lru_cach<Key, Value>::evict_oldest()// удалить самый давний элемент из списка и хеш-таблицы
+Key Lru_cach<Key, Value>::evict_oldest()// удалить самый давний элемент из списка и хеш-таблицы
 {
-    Key key = lru_cach.back();
-    hash_table.erase(key);
+    Key key_old = lru_cach.back().key;
+    hash_table.erase(key_old);
     lru_cach.pop_back();
+
+    return key_old;
 }
 
-template <typename Key, typename Value>
-void Lru_cach<Key, Value>::insert_new(const Key&  key)
-{
-    //TODO нейронка предлагает налепить try и catch это надо сделать
-    lru_cach.push_front(key);
-    hash_table.emplace(key, lru_cach.begin());
-}
+// template <typename Key, typename Value>
+// void Lru_cach<Key, Value>::insert_new(const Key&  key, const Value& value)
+// {
+//     lru_cach.push_front(Entry{key, value});
+
+//     try
+//     {
+//         hash_table.emplace(key, lru_cach.begin());
+//     }
+//     catch (...)
+//     {
+//         lru_cach.pop_front();
+//         throw;
+//     }
+// }
 
 template <typename Key, typename Value>
 Lru_cach<Key, Value>::Lru_cach(): capacity_(0)
