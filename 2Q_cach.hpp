@@ -37,11 +37,8 @@ class Two_Q_Cach
         {
             Type_list type;
 
-            union
-            {
-                Cach_Iterator cach_position;
-                Ghost_Iterator ghost_position;
-            };
+            Cach_Iterator cach_position{};
+            Ghost_Iterator ghost_position{};
         };
 
         using Directory = std::unordered_map<Key, Node>;
@@ -234,8 +231,8 @@ void Two_Q_Cach<Key, Value>::move_a1out_to_am(Directory_Iterator position_direct
 
     a1out.erase(node.ghost_position);
 
-    std::destroy_at(&node.ghost_position);// замена аргументов в union
-    new (&node.cach_position) Cach_Iterator(cach_position_beg);
+    node.ghost_position = Ghost_Iterator{};// замена аргументов в union
+    node.cach_position = cach_position_beg;
     
     node.type = Type_list::Am;
 }
@@ -248,14 +245,14 @@ Key Two_Q_Cach<Key, Value>::move_a1in_to_a1out(Directory_Iterator position_direc
     Key key_out = position_direct -> first;
     a1out.push_front(key_out);
 
-    Ghost_Iterator ghost_position = a1out.begin();
+    Ghost_Iterator ghost_position_beg = a1out.begin();
 
     a1in.erase(node.cach_position);
 
     node.type = Type_list::A1out;
 
-    std::destroy_at(&node.cach_position);// замена аргументов в union
-    new (&node.ghost_position) Ghost_Iterator(ghost_position);  
+    node.cach_position = Cach_Iterator{};// замена аргументов в union
+    node.ghost_position = ghost_position_beg;
     
     return key_out;
 }
@@ -276,7 +273,7 @@ Key Two_Q_Cach<Key, Value>::erase_cach(Cach_List& list)
 {
     Key key = list.back().key;
     auto it_hash = hash_table.find(key);
-    
+
     Node& node = it_hash -> second;
 
     list.erase(node.cach_position);

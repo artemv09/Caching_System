@@ -112,7 +112,7 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::acce
     }
 
     Value value = get_long_data(key);
-    redistribution_cach_ell(value, level_cach - 1, key);  
+    redistribution_cach_ell(value, level_cach, key);  
     return {false, value};
 }
 

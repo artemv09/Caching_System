@@ -424,7 +424,7 @@ std::optional<Key> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save requ
         return std::nullopt;
     }
 
-    if(!T1_.empty() && T1_.size() > target_recent_size_ || (request_in == Type_list_save::B2 && T1_.size() == target_recent_size_))
+    if((!T1_.empty() && T1_.size() > target_recent_size_ )|| (request_in == Type_list_save::B2 && T1_.size() == target_recent_size_))
     {
         return delete_ell_list(Type_list_save::T1);
     }

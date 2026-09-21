@@ -38,8 +38,10 @@ std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& i
 
             general_cach.push_back(Cache_name_size{std::string{name}, capacity, hir_capacity});
         }
-
-        general_cach.push_back(Cache_name_size{std::string{name}, capacity, 0});
+        else
+        {
+            general_cach.push_back(Cache_name_size{std::string{name}, capacity, 0});
+        }
     }
     return general_cach;
 }
