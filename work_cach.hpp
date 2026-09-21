@@ -20,12 +20,22 @@ enum class Cach_Mode
     Exclusive
 };
 
-template<
-    typename Key,
-    typename Value,
-    Cach_Mode Mode,
-    bool Store_Data
->
+#if defined(CACHE_MODE_INCLUSIVE)
+
+inline constexpr Cach_Mode BUILD_CACHE_MODE =
+    Cach_Mode::Inclusive;
+
+#elif defined(CACHE_MODE_EXCLUSIVE)
+
+inline constexpr Cach_Mode BUILD_CACHE_MODE =
+    Cach_Mode::Exclusive;
+
+#else
+
+
+#endif
+
+template<typename Key, typename Value, Cach_Mode Mode>
 class Multi_Level_Cach
 {
     private:
@@ -37,13 +47,15 @@ class Multi_Level_Cach
 
         Public_Access_Result<Value> access_inclusive(const Key& key);
 
-        // Public_Access_Result<Value> access_exclusive(const Key& key);
+        Public_Access_Result<Value> access_exclusive(const Key& key);
 
         // void push_down(std::size_t level, Entry<Key, Value> entry);
 
         // void invalidate_above(std::size_t level, const Key& key);
 
-        void redistribution_cach_ell(const Value& value, std::size_t level_cach, const Key& key);
+        void redistribution_inc_cach(const Value& value, std::size_t level_cach, const Key& key);
+
+        void redistribution_ex_cach(const Value& value, const Key& key);
 
         const Value get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
         {
@@ -65,7 +77,7 @@ class Multi_Level_Cach
             }
             else
             {
-               //return access_exclusive(key);
+               return access_exclusive(key);
             }
         }
 
@@ -75,36 +87,26 @@ class Multi_Level_Cach
         Multi_Level_Cach& operator=(const Multi_Level_Cach&) = delete;
 };
 
-template<
-    typename Key,
-    typename Value,
-    Cach_Mode Mode,
-    bool Store_Data
->
-Multi_Level_Cach<Key, Value, Mode, Store_Data>::Multi_Level_Cach
+template<typename Key, typename Value, Cach_Mode Mode>
+Multi_Level_Cach<Key, Value, Mode>::Multi_Level_Cach
     (const std::vector<Cache_name_size>& parameters, const Big_Data& data): 
     general_cach(create_cach<Key, Value>(parameters)), big_data(&data)
 {
 }
 
-template<
-    typename Key,
-    typename Value,
-    Cach_Mode Mode,
-    bool Store_Data
->
-Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::access_inclusive(const Key& key)
+template<typename Key, typename Value, Cach_Mode Mode>
+Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode>::access_inclusive(const Key& key)
 {
     std::size_t level_cach = 0;
 
-    while(level_cach < general_cach.size() )
+    while(level_cach < general_cach.size())
     {
         Access_Result<Value> result_look_up = std::visit([&](auto& cache) -> Access_Result<Value>
                                 {return cache.look_up(key);},
                                 *general_cach.at(level_cach));
         if(result_look_up.hit)
         {
-            redistribution_cach_ell(*(result_look_up.found_ell), level_cach, key);
+            redistribution_inc_cach(*(result_look_up.found_ell), level_cach, key);
             return {true, *(result_look_up.found_ell)};
         }
 
@@ -112,29 +114,50 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::acce
     }
 
     Value value = get_long_data(key);
-    redistribution_cach_ell(value, level_cach, key);  
+    redistribution_inc_cach(value, level_cach, key);
     return {false, value};
 }
 
-template<
-    typename Key,
-    typename Value,
-    Cach_Mode Mode,
-    bool Store_Data
->
-void Multi_Level_Cach<Key, Value, Mode, Store_Data>::redistribution_cach_ell(const Value& value, std::size_t level_cach, const Key& key)
+template<typename Key, typename Value, Cach_Mode Mode>
+Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode>::access_exclusive(const Key& key)
+{
+    std::size_t level_cach = 0;
+
+    while(level_cach < general_cach.size())
+    {
+        Erase_ELL<Key, Value> result_find = std::visit([&](auto& cache) -> Erase_ELL<Key, Value>
+                                {return cache.find_del(key);},
+                                *general_cach.at(level_cach));
+        if(result_find.key_erase)
+        {
+            redistribution_ex_cach(*(result_find.value_erase), key);
+            return {true, *(result_find.value_erase)};
+        }
+
+        level_cach++;
+    }
+
+    Value value = get_long_data(key);
+    redistribution_ex_cach(value, key);
+    return {false, value};
+}
+
+template<typename Key, typename Value, Cach_Mode Mode>
+void Multi_Level_Cach<Key, Value, Mode>::redistribution_inc_cach(const Value& value, std::size_t level_cach, const Key& key)
 {
     while(level_cach > 0)
     {
         --level_cach;
 
-        std::optional<Key> key_erase = std::visit(
-                [&](auto& cache) -> std::optional<Key>
+        Erase_ELL<Key, Value> erased = std::visit(
+                [&](auto& cache) -> Erase_ELL<Key, Value>
                 {return cache.insert_value(key, value);},
                 *general_cach.at(level_cach)
             );
 
-        if(key_erase != std::nullopt)
+        assert(erased.key_erase.has_value() == erased.value_erase.has_value());
+
+        if(erased.key_erase)
         {
             std::size_t count = level_cach;
 
@@ -144,11 +167,35 @@ void Multi_Level_Cach<Key, Value, Mode, Store_Data>::redistribution_cach_ell(con
 
                 std::visit(
                     [&](auto& cache) -> bool
-                    {return cache.erase_key(*key_erase);},
+                    {return cache.erase_key(*erased.key_erase);},
                     *general_cach.at(count)
                 );
             }
         }
+    }
+}
+
+template<typename Key, typename Value, Cach_Mode Mode>
+void Multi_Level_Cach<Key, Value, Mode>::redistribution_ex_cach(const Value& value, const Key& key)
+{
+    std::size_t count_cach_level = 0;
+    std::size_t max_level = general_cach.size();
+
+    Erase_ELL<Key, Value> erase_ell{key, value};;
+
+    while(count_cach_level < max_level)
+    {
+        erase_ell = std::visit(
+                [&](auto& cache) -> Erase_ELL<Key, Value>
+                {return cache.insert_value(*erase_ell.key_erase, *erase_ell.value_erase);},
+                *general_cach.at(count_cach_level)
+            );
+
+        if(!erase_ell.key_erase)
+        {
+            break;
+        }
+        count_cach_level++;
     }
 }
 
@@ -173,7 +220,9 @@ void general_fun(std::istream& input, std::ostream& output)
 
     std::vector<Cache_name_size> cach_name_size_v = parsing_cach_parametr(config, std::cin);
 
-    Multi_Level_Cach<int, int, Cach_Mode::Inclusive, true> cach(cach_name_size_v ,data);
+    Multi_Level_Cach<int, int, BUILD_CACHE_MODE> cach(cach_name_size_v ,data);
+
+    std::fclose(config);
 
     std::size_t count_key = 0;
     input >> count_key;

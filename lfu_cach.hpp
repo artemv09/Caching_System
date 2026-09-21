@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <optional>
+#include <cassert>
 
 #include "crutch.hpp"
 
@@ -51,9 +52,11 @@ class Lfu_cach
     public:
         Access_Result<Value> look_up(const Key& key);
 
-        bool erase_key(const Key& key);
+        Erase_ELL<Key, Value> find_del(const Key& key);
 
-        std::optional<Key> insert_value(const Key& key, const Value& value);
+        Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
+
+        bool erase_key(const Key& key);
     
         explicit Lfu_cach();
         explicit Lfu_cach(std::size_t capacity);
@@ -73,38 +76,56 @@ class Lfu_cach
 };
 
 template <typename Key, typename Value>
-std::optional<Key>
-Lfu_cach<Key, Value>::insert_value(
+Erase_ELL<Key, Value> Lfu_cach<Key, Value>::find_del(const Key& key)
+{
+    auto found = hash_table.find(key);
+
+    if(found == hash_table.end())
+    {
+        return {std::nullopt, std::nullopt};
+    }
+
+    Erase_ELL<Key, Value> erased{found->first, found->second.position->value};
+    bool removed = erase_key(*erased.key_erase);
+    assert(removed);
+    return erased;
+}
+
+template <typename Key, typename Value>
+Erase_ELL<Key, Value> Lfu_cach<Key, Value>::insert_value(
     const Key& key,
     const Value& value
 )
 {
     if(capacity_ == 0)
     {
-        return key;
+        return {key, value};
     }
 
     if(hash_table.find(key) != hash_table.end())
     {
-        return std::nullopt;
+        return {};
     }
 
-    std::optional<Key> evicted_key = std::nullopt;
+    Erase_ELL<Key, Value> erased;
 
     if(lfu_cach.size() == capacity_)
     {
-        evicted_key = get_key_oldest();
+        Key evicted_key = get_key_oldest();
+        auto victim_it = hash_table.find(evicted_key);
+        assert(victim_it != hash_table.end());
+        erased = {evicted_key, victim_it->second.position->value};
     }
 
     insert_new(key, value);
 
-    if(evicted_key)
+    if(erased.key_erase)
     {
-        bool erased = erase_key(*evicted_key);
-        assert(erased);
+        [[maybe_unused]] bool removed = erase_key(*erased.key_erase);
+        assert(removed);
     }
 
-    return evicted_key;
+    return erased;
 }
 
 template <typename Key, typename Value>
@@ -219,8 +240,6 @@ Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавлен�
         throw;
     }
 
-    min_frequency = 1;
-
     return frequency_list.begin();
 }
 
@@ -253,7 +272,7 @@ void Lfu_cach<Key, Value>::insert_new(const Key& key, const Value& value)
 
         try
         {
-            auto it_hash_table = (hash_table.emplace(key, Node{1, cache_position, frequency_position})).first;
+            hash_table.emplace(key, Node{1, cache_position, frequency_position});
         }
         catch(...)
         {

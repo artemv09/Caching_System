@@ -59,17 +59,21 @@ class Arc_cach
 
         void move_begin_T2(Cach_Iterator position);//переместить в T2 в начало
 
-        std::optional<Key> repeated_hit_transfer_T2(Directory_Iterator hash_iterator, const Value& value);//из B1 B2 T1 в T2
+        Erase_ELL<Key, Value> repeated_hit_transfer_T2(Directory_Iterator hash_iterator, const Value& value);//из B1 B2 T1 в T2
 
-        std::optional<Key> delete_ell_list(Type_list_save type_list);// Переносит конец T в соответствующую историю или удаляет хвост B.
+        Erase_ELL<Key, Value> delete_ell_list(Type_list_save type_list);// Переносит конец T в соответствующую историю или удаляет хвост B.
 
-        std::optional<Key> cache_one_ell_clean(Type_list_save request_in);
+        Erase_ELL<Key, Value> move_resident_to_ghost(Directory_Iterator position);
+
+        Erase_ELL<Key, Value> cache_one_ell_clean(Type_list_save request_in);
 
     public:
-        //новые функции
+        Erase_ELL<Key, Value> find_del(const Key& key);
+
         Access_Result<Value> look_up(const Key& key);
 
-        std::optional<Key> insert_value(const Key& key, const Value& value);
+        Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
+
         bool erase_key(const Key& key);
 
 
@@ -95,6 +99,28 @@ class Arc_cach
             return T1_.empty() && T2_.empty();
         }
 };
+
+template <typename Key, typename Value>
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::find_del(const Key& key)
+{
+    auto found = general_hash_table.find(key);
+    if(found == general_hash_table.end() ||
+       (found->second.type_list != Type_list_save::T1 &&
+        found->second.type_list != Type_list_save::T2))
+    {
+        return {};
+    }
+
+    auto erased = move_resident_to_ghost(found);
+    // В отличие от REPLACE при ghost-hit, здесь нет последующей загрузки,
+    // которая убрала бы запись из истории. Ограничиваем B1 + B2 отдельно.
+    if(B1_.size() + B2_.size() > capacity_)
+    {
+        // T1 + B1 не увеличилось, поэтому при переполнении B2 непуст.
+        delete_ell_list(Type_list_save::B2);
+    }
+    return erased;
+}
 
 template <typename Key, typename Value>
 Access_Result<Value> Arc_cach<Key, Value>::look_up(const Key& key)
@@ -139,26 +165,25 @@ Access_Result<Value> Arc_cach<Key, Value>::look_up(const Key& key)
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Arc_cach<Key, Value>::insert_value(const Key& key, const Value& value)
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
    if(capacity_ == 0)
     {
-        return key;
+        return {key, value};
     }
 
     auto found = general_hash_table.find(key);
 
-    // Ключ уже известен 2Q.
+    // Ключ уже известен ARC.
     if(found != general_hash_table.end())
     {
-        Node_hash& node = found -> second;
         return repeated_hit_transfer_T2(found, value);
     }
 
-    auto key_erase = cache_one_ell_clean(Type_list_save::None);
+    auto erased = cache_one_ell_clean(Type_list_save::None);
     insert_new(key, value);
 
-    return key_erase;
+    return erased;
     //вызвать общую встваку но перед этим освободить место
 }
 
@@ -239,17 +264,17 @@ void Arc_cach<Key, Value>::move_begin_T2(Cach_Iterator position)
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator, const Value& value)//переместить эллемент в T2 ЭТО ГЛАВАНАЯ ФУНКЦИЯ
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iterator hash_iterator, const Value& value)//переместить эллемент в T2 ЭТО ГЛАВАНАЯ ФУНКЦИЯ
 {
     auto& node = hash_iterator -> second;
-    std::optional<Key> key_erase;
+    Erase_ELL<Key, Value> erased;
 
     switch(node.type_list)// из какого list мы вызываем
     {
         case(Type_list_save::T1):
         {
             T2_.splice(T2_.begin(), T1_, node.cach_position);
-            key_erase = std::nullopt;
+            erased = {};
             break;
         }
         case(Type_list_save::B1):
@@ -257,7 +282,7 @@ std::optional<Key> Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iter
             const auto delta = std::max(std::size_t{1}, B2_.size() / B1_.size());//TODO можно поменять на вариант из книги
             target_recent_size_ += std::min(delta, capacity_ - target_recent_size_);
 
-            key_erase = cache_one_ell_clean(Type_list_save::B1);
+            erased = cache_one_ell_clean(Type_list_save::B1);
 
             Key key = hash_iterator -> first;
 
@@ -274,7 +299,7 @@ std::optional<Key> Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iter
             const auto delta = std::max(std::size_t{1}, B1_.size() / B2_.size());
             target_recent_size_ -= std::min(delta, target_recent_size_);
 
-           key_erase = cache_one_ell_clean(Type_list_save::B2);
+           erased = cache_one_ell_clean(Type_list_save::B2);
 
             Key key = hash_iterator -> first;
 
@@ -289,69 +314,55 @@ std::optional<Key> Arc_cach<Key, Value>::repeated_hit_transfer_T2(Directory_Iter
         case(Type_list_save::T2):
         {
             move_begin_T2(node.cach_position);
-            key_erase = std::nullopt;
+            erased = {};
             break;
         }
         case(Type_list_save::None):
         {
             std::cerr << "в хэш таблице несуществующий эллемент";
             assert(false);
-            key_erase = std::nullopt;
+            erased = {};
             break;
         }
     }
 
     node.type_list = Type_list_save::T2;
-    return key_erase;
+    return erased;
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Arc_cach<Key, Value>::delete_ell_list(Type_list_save type_list)//понижение одного конкретного эллемента до B1 или B2 передаем что нужно понизить T1 T2 поницаем B1 B2 удаляем
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::move_resident_to_ghost(Directory_Iterator position)
+{
+    assert(position != general_hash_table.end());
+    Node_hash& node = position->second;
+    assert(node.type_list == Type_list_save::T1 || node.type_list == Type_list_save::T2);
+
+    const bool recent = node.type_list == Type_list_save::T1;
+    auto& resident = recent ? T1_ : T2_;
+    auto& ghost = recent ? B1_ : B2_;
+    Erase_ELL<Key, Value> erased{position->first, node.cach_position->value};
+
+    // Копирование пары и создание ghost-узла выполняются до удаления Entry.
+    ghost.push_front(*erased.key_erase);
+    resident.erase(node.cach_position);
+    node.cach_position = Cach_Iterator{};
+    node.ghost_position = ghost.begin();
+    node.type_list = recent ? Type_list_save::B1 : Type_list_save::B2;
+    return erased;
+}
+
+template <typename Key, typename Value>
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::delete_ell_list(Type_list_save type_list)//понижение одного конкретного эллемента до B1 или B2 передаем что нужно понизить T1 T2 поницаем B1 B2 удаляем
 {
     switch(type_list)
     {
         case(Type_list_save::T1):
         {
-            Key key = T1_.back().key;
-
-            auto found = general_hash_table.find(key);
-            Node_hash& node = found -> second;
-
-            // Добавляем ключ в ghost B1.
-            B1_.push_front(key);
-            Ghost_Iterator ghost_position = B1_.begin();
-
-            // Удаляем реальные данные из T1.
-            T1_.erase(node.cach_position);
-
-            // Теперь запись hash_table указывает на B1.
-            node.type_list = Type_list_save::B1;
-            node.ghost_position = ghost_position;
-
-            // Реальный элемент покинул кэш.
-            return key;
+            return move_resident_to_ghost(general_hash_table.find(T1_.back().key));
         }
-
         case(Type_list_save::T2):
         {
-            Key key = T2_.back().key;
-
-            auto found = general_hash_table.find(key);
-
-            Node_hash& node = found->second;
-
-            // Добавляем ключ в ghost B2.
-            B2_.push_front(key);
-            Ghost_Iterator ghost_position = B2_.begin();
-
-            // Удаляем реальные данные из T2.
-            T2_.erase(node.cach_position);
-
-            // Теперь запись hash_table указывает на B2.
-            node.type_list = Type_list_save::B2;
-            node.ghost_position = ghost_position;
-
-            return key;
+            return move_resident_to_ghost(general_hash_table.find(T2_.back().key));
         }
 
         case(Type_list_save::B1):
@@ -363,7 +374,7 @@ std::optional<Key> Arc_cach<Key, Value>::delete_ell_list(Type_list_save type_lis
             B1_.erase(found -> second.ghost_position);
             general_hash_table.erase(found);
 
-            return std::nullopt;
+            return {};
         }
 
         case(Type_list_save::B2):
@@ -375,24 +386,24 @@ std::optional<Key> Arc_cach<Key, Value>::delete_ell_list(Type_list_save type_lis
             B2_.erase(found -> second.ghost_position);
             general_hash_table.erase(found);
 
-            return std::nullopt;
+            return {};
         }
 
         case(Type_list_save::None):
         {
-            return std::nullopt;
+            return {};
         }
     }
 
-    return std::nullopt;
+    return {};
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save request_in)//отвечает за выбор логики удаления и перемещения эллементов
+Erase_ELL<Key, Value> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save request_in)//отвечает за выбор логики удаления и перемещения эллементов
 {
     if(capacity_ == 0)
     {        
-        return std::nullopt;
+        return {};
     }
 
     if(request_in == Type_list_save::None)
@@ -402,12 +413,12 @@ std::optional<Key> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save requ
             if(T1_.size() == capacity_)
             {
                 auto oldest_ell = general_hash_table.find(T1_.back().key);//полностью удаляем из T1 без захода в B1
-                Key key_erase = oldest_ell -> first;
+                Erase_ELL<Key, Value> erased{oldest_ell->first, T1_.back().value};
 
                 general_hash_table.erase(oldest_ell);
                 T1_.pop_back();
 
-                return key_erase;
+                return erased;
             }
 
             delete_ell_list(Type_list_save::B1);
@@ -421,7 +432,7 @@ std::optional<Key> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save requ
 
     if(size() < capacity_)
     {
-        return std::nullopt;
+        return {};
     }
 
     if((!T1_.empty() && T1_.size() > target_recent_size_ )|| (request_in == Type_list_save::B2 && T1_.size() == target_recent_size_))

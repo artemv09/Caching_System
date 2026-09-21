@@ -58,7 +58,7 @@ class Lirs_cach
 
         Directory general_hash_table;
 
-        std::optional<Key> insert_new(const Key& key, const Value& value);
+        Erase_ELL<Key, Value> insert_new(const Key& key, const Value& value);
 
         void hit_hir_S_ell(Directory_Iterator hash_table_it);
 
@@ -68,17 +68,18 @@ class Lirs_cach
 
         void hit_hir_Q_ell(Directory_Iterator hash_table_it);
 
-        std::optional<Key> hit_no_resident(Directory_Iterator hash_table_it, const Value& value);
+        Erase_ELL<Key, Value> hit_no_resident(Directory_Iterator hash_table_it, const Value& value);
 
         void prune_S();//берет и очищает низ LIR от HIR
     
     public:
-        //новые функции
+        Erase_ELL<Key, Value> find_del(const Key& key);
+
         Access_Result<Value> look_up(const Key& key);
 
         bool erase_key(const Key& key);
 
-        std::optional<Key> insert_value(const Key& key, const Value& value);
+        Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
   
         explicit Lirs_cach(std::size_t capacity, std::size_t HIR_capacity);
 
@@ -95,6 +96,30 @@ class Lirs_cach
             return capacity_;
         }
 };
+
+template <typename Key, typename Value>
+Erase_ELL<Key, Value> Lirs_cach<Key, Value>::find_del(const Key& key)
+{
+    auto found = general_hash_table.find(key);
+
+    if(found == general_hash_table.end())
+    {
+        return {};
+    }
+
+    Node& node = found -> second;
+
+    if(node.status == Status::HIR_NO_RES)
+    {
+        return {};
+    }
+
+    assert(node.value.has_value());
+    Erase_ELL<Key, Value> erased{found->first, *node.value};
+    [[maybe_unused]] bool removed = erase_key(*erased.key_erase);
+    assert(removed);
+    return erased;
+}
 
 template <typename Key, typename Value>
 Access_Result<Value> Lirs_cach<Key, Value>::look_up(const Key& key)
@@ -160,11 +185,11 @@ Access_Result<Value> Lirs_cach<Key, Value>::look_up(const Key& key)
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Lirs_cach<Key, Value>::insert_value(const Key& key, const Value& value)
+Erase_ELL<Key, Value> Lirs_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
     if(capacity_ == 0)
     {
-        return key;
+        return {key, value};
     }
 
     auto found = general_hash_table.find(key);
@@ -181,7 +206,7 @@ std::optional<Key> Lirs_cach<Key, Value>::insert_value(const Key& key, const Val
         return hit_no_resident(found, value);
     }
 
-    return std::nullopt;
+    return {};
 }
 
 template <typename Key, typename Value>
@@ -237,19 +262,23 @@ bool Lirs_cach<Key, Value>::erase_key(const Key& key)
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Lirs_cach<Key, Value>::insert_new(const Key& key, const Value& value)
+Erase_ELL<Key, Value> Lirs_cach<Key, Value>::insert_new(const Key& key, const Value& value)
 {
+    Erase_ELL<Key, Value> erased;
+    if(LIR_capacity_ == LIR_count_ && HIR_capacity_ == HIR_resident_count_)
+    {
+        auto victim = general_hash_table.find(list_Q.back());
+        assert(victim != general_hash_table.end() && victim->second.value.has_value());
+        erased = {victim->first, *victim->second.value};
+    }
+
     list_S.push_front(key);//новый эллемент всегда кладется в S
 
     if(LIR_capacity_ == LIR_count_)
     {
-        std::optional<Key> erase_key = std::nullopt;
-
         if(HIR_capacity_ == HIR_resident_count_)//вытеснить HIR но оставить no_res...
         {
             Key key_hir_del = list_Q.back();
-            erase_key = key_hir_del;
-            ;
             auto it_hash = general_hash_table.find(key_hir_del);
             Node& node_hir_del = it_hash -> second;
 
@@ -276,7 +305,7 @@ std::optional<Key> Lirs_cach<Key, Value>::insert_new(const Key& key, const Value
         general_hash_table.emplace(key, node);
         HIR_resident_count_++;
 
-        return erase_key;
+        return erased;
     }
     else
     {
@@ -286,7 +315,7 @@ std::optional<Key> Lirs_cach<Key, Value>::insert_new(const Key& key, const Value
 
         prune_S();
 
-        return std::nullopt;
+        return {};
     }
 }
 
@@ -376,11 +405,18 @@ void Lirs_cach<Key, Value>::hit_hir_Q_ell(Directory_Iterator hash_table_it)
 }
 
 template <typename Key, typename Value>
-std::optional<Key> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator hash_table_it, const Value& value)
+Erase_ELL<Key, Value> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator hash_table_it, const Value& value)
 {
     Node& node_hit = hash_table_it -> second;
 
-    std::optional<Key> erase_key = std::nullopt;
+    Erase_ELL<Key, Value> erased;
+
+    if(HIR_capacity_ == HIR_resident_count_ && LIR_count_ == LIR_capacity_)
+    {
+        auto victim = general_hash_table.find(list_Q.back());
+        assert(victim != general_hash_table.end() && victim->second.value.has_value());
+        erased = {victim->first, *victim->second.value};
+    }
 
     move_to_top_S(hash_table_it);
 
@@ -391,7 +427,6 @@ std::optional<Key> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator has
     if(HIR_capacity_ == HIR_resident_count_ && LIR_count_ == LIR_capacity_)
     {
         Directory_Iterator oldes_Q_ell_it = general_hash_table.find(list_Q.back());
-        erase_key = oldes_Q_ell_it -> first;//ключ на удаление
 
         list_Q.pop_back();  
         HIR_resident_count_--;
@@ -432,7 +467,7 @@ std::optional<Key> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator has
     }
 
     prune_S();
-    return erase_key;
+    return erased;
 }
 
 template <typename Key, typename Value>

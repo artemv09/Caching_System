@@ -2,6 +2,7 @@
 #define C
 
 #include <iostream>
+#include <optional>
 
 template<typename Value>
 struct Access_Result
@@ -22,6 +23,13 @@ struct Entry
 {
     Key key;
     Value value;
+};
+
+template <typename Key, typename Value>
+struct Erase_ELL
+{
+    std::optional<Key> key_erase;
+    std::optional<Value> value_erase;
 };
 
 #endif
