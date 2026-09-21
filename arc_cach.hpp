@@ -355,7 +355,7 @@ std::optional<Key> Arc_cach<Key, Value>::delete_ell_list(Type_list_save type_lis
             Ghost_Iterator ghost_position = B2_.begin();
 
             // Удаляем реальные данные из T2.
-            T2_.erase(node.cache_position);
+            T2_.erase(node.cach_position);
 
             // Теперь запись hash_table указывает на B2.
             node.type_list = Type_list_save::B2;

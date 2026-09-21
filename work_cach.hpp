@@ -43,7 +43,7 @@ class Multi_Level_Cach
 
         // void invalidate_above(std::size_t level, const Key& key);
 
-        // void redistribution_cach_ell(const Value& value, std::size, const Key& key);
+        void redistribution_cach_ell(const Value& value, std::size_t level_cach, const Key& key);
 
         const Value get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
         {
@@ -52,12 +52,10 @@ class Multi_Level_Cach
 
     public:
 
-        Public_Access_Result<Value> access(std::istream& input)
+        Public_Access_Result<Value> access(const Key& key)
         {
             if constexpr (Mode == Cach_Mode::Inclusive)
             {
-                Key key;
-                input >> key;
                return access_inclusive(key);
             }
             else
@@ -94,7 +92,7 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::acce
 {
     std::size_t level_cach = 0;
 
-    while(level_cach != general_cach.size())
+    while(level_cach < general_cach.size() )
     {
         Access_Result<Value> result_look_up = std::visit([&](auto& cache) -> Access_Result<Value>
                                 {return cache.look_up(key);},
@@ -109,7 +107,7 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::acce
     }
 
     Value value = get_long_data(key);
-    redistribution_cach_ell(value, level_cach + 1, key);  
+    redistribution_cach_ell(value, level_cach - 1, key);  
     return {false, value};
 }
 

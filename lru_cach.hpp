@@ -67,7 +67,7 @@ std::optional<Key> Lru_cach<Key, Value>::insert_value(const Key& key, const Valu
        return key;
     }
 
-    lru_cach.push_front(Entry{key, value});
+    lru_cach.push_front(Entry<Key, Value>{key, value});
 
     try
     {

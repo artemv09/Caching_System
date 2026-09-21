@@ -26,6 +26,8 @@ std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& i
         }
 
         std::size_t capacity;
+        input >> capacity;
+        std::cout << "ппор";
     
         if(name == "LIRS")
         {

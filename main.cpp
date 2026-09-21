@@ -31,7 +31,18 @@ int main()
 
     Multi_Level_Cach<int, int, Cach_Mode::Inclusive, true> x(cach_name_size ,data);
 
-    x.access(std::cin);
+    int d = 0;
+    std::cin >> d;
+    int i = 0;
+    while(d > i)
+    {
+        int key = 0;
+        std::cin >> key;
+        std::cout << "  QSX";
+
+        int f = (x.access(key)).sought_element;
+        std::cout << f;
+    }
 
     
 

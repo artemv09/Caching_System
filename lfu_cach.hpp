@@ -44,7 +44,7 @@ class Lfu_cach
         
         Frequency_Iterator new_ell_frequency_table(const Key& key);
         void relocation_frequency_table(Node& node_key);
-        Key get_key_oldest() const; 
+        Key get_key_oldest();
 
     public:
         //новые функции
@@ -220,7 +220,7 @@ Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавлен�
     {
         if(create_success && frequency_list.empty())
         {
-            frequency_table.erase(frequency_list);
+            frequency_table.erase(result.first);
         }
 
         throw;
@@ -296,7 +296,7 @@ void Lfu_cach<Key, Value>::insert_new(const Key& key, const Value& value)
 }
 
 template <typename Key, typename Value>
-Key Lfu_cach<Key, Value>::get_key_oldest() const// возвращает ключ наименее часто вызываемого обекта
+Key Lfu_cach<Key, Value>::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта
 {
     auto min_frequency_list = frequency_table.find(min_frequency);
     Key min_key = (min_frequency_list -> second).back();
@@ -305,7 +305,7 @@ Key Lfu_cach<Key, Value>::get_key_oldest() const// возвращает ключ
     
     if (min_frequency_list -> second.empty())
     {
-        frequency_table.erase(min_frequency_list);
+        frequency_table.erase(min_key);
     }
 
     return min_key; 
