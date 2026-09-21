@@ -39,7 +39,7 @@ class Two_Q_Cach
 
             union
             {
-                Cach_Iterator cache_position{};
+                Cach_Iterator cach_position{};
                 Ghost_Iterator ghost_position{};
             };
         };
@@ -116,20 +116,18 @@ Access_Result<Value> Two_Q_Cach<Key, Value>::look_up(const Key& key)
     {
         case(Type_list::A1in):
         {
-            return {true, &(node.cache_position -> value)};
+            return {true, &(node.cach_position -> value)};
         }
-
         case(Type_list::Am):
         {
-            make_recent_am(node.cache_position);
+            make_recent_am(node.cach_position);
 
-            return {true, &(node.cache_position -> value)};
+            return {true, &((node.cach_position) -> value)};
         }
-
-        case(Type_list::A1out):
-        {
-            return {false, nullptr};
-        }
+        // case(Type_list::A1out):
+        // {
+        //     return {false, nullptr};
+        // }
     }
 
     return {false, nullptr};
@@ -186,18 +184,15 @@ bool Two_Q_Cach<Key, Value>::erase_key(const Key& key)
             a1in.erase(node.cache_position);
             break;
         }
-
         case Type_list::Am:
         {
             am.erase(node.cache_position);
             break;
         }
-
         case Type_list::A1out:
         {
-            a1out.erase(node.ghost_position);
-            break;
-        }
+            return false;
+        }//не удаляем данные из ghost списка
     }
 
     hash_table.erase(found);
@@ -209,7 +204,7 @@ template <typename Key, typename Value>
 void Two_Q_Cach<Key, Value>::insert_cach(const Key& key, const Value& value, Cach_List& list, Type_list type)
 {
     list.push_front(Entry<Key, Value>{key, value});
-    Cache_Iterator cache_position = list.begin();
+    Cach_Iterator cache_position = list.begin();
 
     try
     {
@@ -219,12 +214,12 @@ void Two_Q_Cach<Key, Value>::insert_cach(const Key& key, const Value& value, Cac
         }
         else
         {
-            hash_table.emplace(key, Node{Type_list::A1in, cache_position,});
+            hash_table.emplace(key, Node{Type_list::A1in, cach_position,});
         }
     }
     catch(...)
     {
-        list.erase(cache_position);
+        list.erase(cach_position);
         throw;
     }
 }
@@ -236,12 +231,12 @@ void Two_Q_Cach<Key, Value>::move_a1out_to_am(Directory_Iterator position_direct
 
     am.push_front(Entry<Key, Value>{position_direct -> first, value});
 
-    Cache_Iterator cache_position = am.begin();
+    Cach_Iterator cache_position = am.begin();
 
     a1out.erase(node.ghost_position);
 
     std::destroy_at(&node.ghost_position);// замена аргументов в union
-    new (&node.cache_position) Cache_Iterator(cache_position);
+    new (&node.cache_position) Cach_Iterator(cache_position);
     
     node.type = Type_list::Am;
 }
@@ -261,7 +256,7 @@ Key Two_Q_Cach<Key, Value>::move_a1in_to_a1out(Directory_Iterator position_direc
     node.type = Type_list::A1out;
 
     std::destroy_at(&node.cach_position);// замена аргументов в union
-    new (&node.ghoyst_position) Cache_Iterator(ghost_position);  
+    new (&node.ghoyst_position) Cach_Iterator(ghost_position);  
     
     return key_out;
 }
@@ -270,22 +265,22 @@ template <typename Key, typename Value>
 void Two_Q_Cach<Key, Value>::erase_a1out()
 {
     Key key = a1out.back();
-    auto it_hash = hach_table.find(key);
-    Node& node = it_cach -> second;
+    auto it_hash = hash_table.find(key);
+    Node& node = it_hash-> second;
 
     a1out.erase(node.ghost_position);
-    hach_table.erase(it_hash);
+    hash_table.erase(it_hash);
 }
 
 template <typename Key, typename Value>
 Key Two_Q_Cach<Key, Value>::erase_cach(Cach_List& list)
 {
     Key key = list.back();
-    auto it_hash = hach_table.find(key);
-    Node& node = it_cach -> second;
+    auto it_hash = hash_table.find(key);
+    Node& node = it_hash -> second;
 
     list.erase(node.cach_position);
-    hach_table.erase(it_hash);
+    hash_table.erase(it_hash);
 
     return key;
 }

@@ -37,13 +37,13 @@ class Multi_Level_Cach
 
         Public_Access_Result<Value> access_inclusive(const Key& key);
 
-        Public_Access_Result<Value> access_exclusive(const Key& key);
+        // Public_Access_Result<Value> access_exclusive(const Key& key);
 
-        void push_down(std::size_t level, Entry<Key, Value> entry);
+        // void push_down(std::size_t level, Entry<Key, Value> entry);
 
-        void invalidate_above(std::size_t level, const Key& key);
+        // void invalidate_above(std::size_t level, const Key& key);
 
-        void redistribution_cach_ell(const Value& value, std::size, const Key& key);
+        // void redistribution_cach_ell(const Value& value, std::size, const Key& key);
 
         const Value get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
         {
@@ -52,15 +52,17 @@ class Multi_Level_Cach
 
     public:
 
-        Public_Access_Result<Value> acess(const Key& key)
+        Public_Access_Result<Value> access(std::istream& input)
         {
             if constexpr (Mode == Cach_Mode::Inclusive)
             {
+                Key key;
+                input >> key;
                return access_inclusive(key);
             }
             else
             {
-               return access_exclusive(key);
+               //return access_exclusive(key);
             }
         }
 
@@ -90,8 +92,8 @@ template<
 >
 Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::access_inclusive(const Key& key)
 {
-    //сначал проверим а вообще есть ои эллемент в кэше
     std::size_t level_cach = 0;
+
     while(level_cach != general_cach.size())
     {
         Access_Result<Value> result_look_up = std::visit([&](auto& cache) -> Access_Result<Value>
@@ -102,7 +104,7 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode, Store_Data>::acce
             redistribution_cach_ell(*(result_look_up.found_ell), level_cach, key);
             return {true, *(result_look_up.found_ell)};
         }
-        
+
         level_cach++;
     }
 

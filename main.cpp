@@ -8,14 +8,10 @@
 #include "arc_cach.hpp"
 #include "lirs_cach.hpp"
 #include "creat_cach.hpp"
+#include "work_cach.hpp"
 
 int main()
 {
-    FILE* config = std::fopen("config.txt", "r");
-    std::vector<Cache_name_size> cach_name_size = parsing_cach_parametr(config, std::cin);
-
-    std::vector<Cach_ptr<int>> general_cach = create_cach<int>(cach_name_size);
-    
     std::unordered_map<int, int> data
     {
         {1, 100},
@@ -29,6 +25,13 @@ int main()
         {9, 900},
         {10, 1000}
     };
+
+    FILE* config = std::fopen("config.txt", "r");
+    std::vector<Cache_name_size> cach_name_size = parsing_cach_parametr(config, std::cin);
+
+    Multi_Level_Cach<int, int, Cach_Mode::Inclusive, true> x(cach_name_size ,data);
+
+    x.access(std::cin);
 
     
 

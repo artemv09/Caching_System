@@ -50,7 +50,7 @@ class Lfu_cach
         //новые функции
         Access_Result<Value> look_up(const Key& key);
         bool erase_key(const Key& key);
-        std::optional<Key> Lfu_cach<Key, Value>::insert_value(const Key& key, const Value& value);
+        std::optional<Key> insert_value(const Key& key, const Value& value);
         //конец
     
         explicit Lfu_cach();
@@ -220,7 +220,7 @@ Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавлен�
     {
         if(create_success && frequency_list.empty())
         {
-            frequency_table.erase(frequency_it);
+            frequency_table.erase(frequency_list);
         }
 
         throw;
