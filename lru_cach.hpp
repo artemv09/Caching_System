@@ -28,24 +28,21 @@ class Lru_cach
         std::size_t capacity_;
         
         void make_recent(Iterator position);// перенести существующий узел списка в head
+
         Key evict_oldest();// удалить самый давний элемент из списка и хеш-таблицы
-        //void insert_new(const Key&  key, const Value& value);// добавить новый узел списка и соответствующую запись в хеш-таблицу
-
-    public:
-        //здесь располагаются новые функции
-        Access_Result<Value> look_up(const Key& key);
-        std::optional<Key> insert_value(const Key& key, const Value& value);
-        bool erase_key(const Key& key);
         
+    public:
+        Access_Result<Value> look_up(const Key& key);
 
-        //конец
+        std::optional<Key> insert_value(const Key& key, const Value& value);
+
+        bool erase_key(const Key& key);
+
         explicit Lru_cach();
         explicit Lru_cach(std::size_t capacity);
 
         Lru_cach(const Lru_cach&) = delete;
         Lru_cach& operator=(const Lru_cach&) = delete;
-
-        //bool access(const Key& key);//функция для обединения всего в одну систему
 
         std::size_t size() const noexcept
         {
@@ -86,34 +83,6 @@ std::optional<Key> Lru_cach<Key, Value>::insert_value(const Key& key, const Valu
 
     return evict_oldest();
 }
-
-// template <typename Key, typename Value>
-// bool Lru_cach<Key, Value>::access(const Key& key)//TODO хз можно удалить вообще
-// {
-//     if(capacity_ == 0)
-//     {
-//         return false;
-//     }
-
-//     auto found_ell = hash_table.find(key);
-
-//     if(found_ell != hash_table.end())
-//     {
-//         make_recent(found_ell -> second);
-//         //found_ell -> second = lru_cach.begin(); вроде не нужно
-//         return true;
-//     }
-
-//     insert_new(key, value);
-
-//     if(lru_cach.size() > capacity_)
-//     {
-//         evict_oldest();
-//         return false;
-//     }
-
-//     return false;
-// }
 
 template <typename Key, typename Value>
 bool Lru_cach<Key, Value>::erase_key(const Key& key)
@@ -165,22 +134,6 @@ Key Lru_cach<Key, Value>::evict_oldest()// удалить самый давни�
 
     return key_old;
 }
-
-// template <typename Key, typename Value>
-// void Lru_cach<Key, Value>::insert_new(const Key&  key, const Value& value)
-// {
-//     lru_cach.push_front(Entry{key, value});
-
-//     try
-//     {
-//         hash_table.emplace(key, lru_cach.begin());
-//     }
-//     catch (...)
-//     {
-//         lru_cach.pop_front();
-//         throw;
-//     }
-// }
 
 template <typename Key, typename Value>
 Lru_cach<Key, Value>::Lru_cach(): capacity_(0)

@@ -47,6 +47,11 @@ class Multi_Level_Cach
 
         const Value get_long_data(const Key& key)//TODO незнабю насколько нормально то что я возвращаю ссылку
         {
+            auto find_val = big_data -> find(key);
+            if(find_val == big_data -> end())
+            {
+                throw std::runtime_error("попытка найти не существующий ключ");
+            }
             return big_data -> at(key);
         }
 
@@ -147,5 +152,52 @@ void Multi_Level_Cach<Key, Value, Mode, Store_Data>::redistribution_cach_ell(con
     }
 }
 
+template<typename Key, typename Value>
+void general_fun(std::istream& input, std::ostream& output)
+{
+    std::unordered_map<int, int> data
+    {
+        {1, 100},
+        {2, 200},
+        {3, 300},
+        {4, 400},
+        {5, 500},
+        {6, 600},
+        {7, 700},
+        {8, 800},
+        {9, 900},
+        {10, 1000}
+    };
+
+    FILE* config = std::fopen("config.txt", "r");
+
+    std::vector<Cache_name_size> cach_name_size_v = parsing_cach_parametr(config, std::cin);
+
+    Multi_Level_Cach<int, int, Cach_Mode::Inclusive, true> cach(cach_name_size_v ,data);
+
+    std::size_t count_key = 0;
+    input >> count_key;
+
+    std::size_t count = 0;
+    std::size_t count_hit = 0;
+    
+    while(count < count_key)
+    {
+        Key key = 0;
+        input >> key;
+
+        Public_Access_Result rezult = cach.access(key);
+        Value value = rezult.sought_element;
+
+        if(rezult.hit)
+        {
+            output << "============= " << count + 1 << "\n";
+            count_hit++;
+        }
+        output << "Key " << key << " == " << value << "\n";
+        count++;
+    }
+    output << "Колличество попаданий == " << count_hit << "\n";
+}
 
 #endif

@@ -59,25 +59,31 @@ class Lirs_cach
         Directory general_hash_table;
 
         std::optional<Key> insert_new(const Key& key, const Value& value);
+
         void hit_hir_S_ell(Directory_Iterator hash_table_it);
+
         void move_to_top_S(Directory_Iterator hash_table_it);
+
         void erase_from_Q(Directory_Iterator hash_table_it);
+
         void hit_hir_Q_ell(Directory_Iterator hash_table_it);
+
         std::optional<Key> hit_no_resident(Directory_Iterator hash_table_it, const Value& value);
+
         void prune_S();//берет и очищает низ LIR от HIR
     
     public:
         //новые функции
         Access_Result<Value> look_up(const Key& key);
+
         bool erase_key(const Key& key);
+
         std::optional<Key> insert_value(const Key& key, const Value& value);
-        //конец
+  
         explicit Lirs_cach(std::size_t capacity, std::size_t HIR_capacity);
 
         Lirs_cach(const Lirs_cach&) = delete;
         Lirs_cach& operator=(const Lirs_cach&) = delete;
-
-        bool access(const Key& key);
 
         std::size_t size() const noexcept
         {
@@ -428,66 +434,6 @@ std::optional<Key> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator has
     prune_S();
     return erase_key;
 }
-
-// template <typename Key, typename Value>
-// bool Lirs_cach<Key, Value>::access(const Key& key)
-// {
-//     if(capacity_ == 0)
-//     {
-//         return false;
-//     }
-
-//     auto found = general_hash_table.find(key);
-
-//     // При вместимости 1 разделение на LIR/HIR невозможно: храним одну HIR в Q.
-//     if(capacity_ == 1)
-//     {
-//         if(found != general_hash_table.end())
-//         {
-//             return true;
-//         }
-
-//         insert_new(key);
-//         prune_S(); // История не нужна: S остаётся пустым, страница остаётся в Q.
-//         return false;
-//     }
-
-//     if(found == general_hash_table.end())
-//     {
-//         insert_new(key);
-//         return false;
-//     }
-
-//     switch(found -> second.status)
-//     {
-//         case(Status::LIR):
-//         {
-//             move_to_top_S(found);
-//             prune_S();
-//             return true;
-//         }
-//         case(Status::HIR):
-//         {
-//             if(found -> second.in_s_flag)
-//             {
-//                 hit_hir_S_ell(found);
-//             }   
-//             else
-//             {
-//                 hit_hir_Q_ell(found);
-//             }
-//             return true;
-//         }
-//         case(Status::HIR_NO_RES):
-//         {
-//             hit_no_resident(found);
-//             return false;
-//         }
-//         default:
-//             break;
-//     }
-//     return false;
-// }
 
 template <typename Key, typename Value>
 Lirs_cach<Key, Value>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity): 

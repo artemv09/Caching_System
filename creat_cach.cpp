@@ -27,7 +27,6 @@ std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& i
 
         std::size_t capacity;
         input >> capacity;
-        std::cout << "ппор";
     
         if(name == "LIRS")
         {
@@ -42,7 +41,6 @@ std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& i
 
         general_cach.push_back(Cache_name_size{std::string{name}, capacity, 0});
     }
-
     return general_cach;
 }
 

@@ -58,21 +58,28 @@ class Two_Q_Cach
 
         Directory hash_table;
 
-       // void insert_new(const Key& key, Directory& hash_table, Cach_List& list);
-
         void make_recent_am(Cach_Iterator position);// перенести существующий узел списка в head
+        
         std::optional<Key> rules_displacment();
+
+        void insert_cach(const Key& key, const Value& value, Cach_List& list, Type_list type);
+
+        void move_a1out_to_am(Directory_Iterator position_direct, const Value& value);
+        Key move_a1in_to_a1out(Directory_Iterator position_direct);//
+
+        void erase_a1out();//удаляет последний эллемнт из a1out
+        Key erase_cach(Cach_List& list);//удаляет последний эллемент из am a1in
+
+        bool check(const Key& key, Directory& hash_table);
+
                            
     public:
         //новые функции
         Access_Result<Value> look_up(const Key& key);
+
         std::optional<Key> insert_value(const Key& key, const Value& value);
+
         bool erase_key(const Key& key);
-        void insert_cach(const Key& key, const Value& value, Cach_List& list, Type_list type);
-        void move_a1out_to_am(Directory_Iterator position_direct, const Value& value);
-        Key move_a1in_to_a1out(Directory_Iterator position_direct);//
-        void erase_a1out();//удаляет последний эллемнт из a1out
-        Key erase_cach(Cach_List& list);//удаляет последний эллемент из am a1in
         
         //конец
         explicit Two_Q_Cach();
@@ -80,9 +87,6 @@ class Two_Q_Cach
 
         Two_Q_Cach(const Two_Q_Cach&) = delete;
         Two_Q_Cach& operator=(const Two_Q_Cach&) = delete;
-
-        //bool access(const Key& key);
-        bool check(const Key& key, Directory& hash_table);
 
         std::size_t size() const noexcept
         {
@@ -124,12 +128,7 @@ Access_Result<Value> Two_Q_Cach<Key, Value>::look_up(const Key& key)
 
             return {true, &((node.cach_position) -> value)};
         }
-        // case(Type_list::A1out):
-        // {
-        //     return {false, nullptr};
-        // }
     }
-
     return {false, nullptr};
 }
 
@@ -277,6 +276,7 @@ Key Two_Q_Cach<Key, Value>::erase_cach(Cach_List& list)
 {
     Key key = list.back().key;
     auto it_hash = hash_table.find(key);
+    
     Node& node = it_hash -> second;
 
     list.erase(node.cach_position);
@@ -291,13 +291,6 @@ void Two_Q_Cach<Key, Value>::make_recent_am(Cach_Iterator position)// перен
     am.splice(am.begin(), am, position);
 }
 
-// template <typename Key, typename Value>
-// void Two_Q_Cach<Key, Value>::insert_new(const Key& key, Cach_Directory& hach_table, Cach_List& list)// добавить новый узел списка и соответствующую запись в хеш-таблицу
-// {
-//     list.push_front(key);
-//     hach_table.emplace(key, list.begin());
-// }
-
 template <typename Key, typename Value>
 Two_Q_Cach<Key, Value>::Two_Q_Cach(): capacity_(0)
 {
@@ -307,46 +300,6 @@ template <typename Key, typename Value>
 Two_Q_Cach<Key, Value>::Two_Q_Cach(std::size_t capacity): capacity_(capacity), Kout(capacity / 2), Kin(capacity / 4)
 {
 }
-
-// template <typename Key, typename Value>
-// bool Two_Q_Cach<Key, Value>::access(const Key& key)
-// {
-//     if(capacity_ == 0)
-//     {
-//         return false;
-//     }
-
-//     auto found_ell = a1out_table.find(key);
-//     auto found_am_ell = am_table.find(key);
-
-//     if(check(key, a1out_table))
-//     {
-//         a1out.erase(found_ell -> second);
-//         a1out_table.erase(found_ell);
-
-//         rules_displacment();
-//         insert_new(key, am_table, am);       
-//     }
-
-//     else if(check(key, am_table))
-//     {
-//         make_recent_am(found_am_ell -> second);
-//         return true;
-//     }
-
-//     else if(check(key, a1in_table))
-//     {
-//         return true;
-//     }
-
-//     else
-//     {
-//         rules_displacment();
-//         insert_new(key, a1in_table, a1in);
-//     }
-
-//     return false;
-// }
 
 template <typename Key, typename Value>
 bool Two_Q_Cach<Key, Value>::check(const Key& key, Directory& hach_table)//проверка наличия ключа в таблице

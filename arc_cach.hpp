@@ -56,7 +56,9 @@ class Arc_cach
         Directory general_hash_table;
 
         void insert_new(const Key& key, const Value& value);//создать новый эллемент и щапись в хэш таблице
+
         void move_begin_T2(Cach_Iterator position);//переместить в T2 в начало
+
         std::optional<Key> repeated_hit_transfer_T2(Directory_Iterator hash_iterator, const Value& value);//из B1 B2 T1 в T2
 
         std::optional<Key> delete_ell_list(Type_list_save type_list);// Переносит конец T в соответствующую историю или удаляет хвост B.
@@ -66,8 +68,10 @@ class Arc_cach
     public:
         //новые функции
         Access_Result<Value> look_up(const Key& key);
+
         std::optional<Key> insert_value(const Key& key, const Value& value);
         bool erase_key(const Key& key);
+
 
         //конец
         explicit Arc_cach(std::size_t capacity);
@@ -75,8 +79,6 @@ class Arc_cach
 
         Arc_cach(const Arc_cach&) = delete;
         Arc_cach& operator=(const Arc_cach&) = delete;
-
-        //bool access(const Key& key);
 
         std::size_t size() const noexcept
         {
@@ -128,24 +130,12 @@ Access_Result<Value> Arc_cach<Key, Value>::look_up(const Key& key)
 
             return {true, &(node.cach_position -> value)};
         }
-
-        // case(Type_list_save::B1):
-        // case(Type_list_save::B2):
-        // {
-        //     return {false, nullptr};
-        // }
-
-        // case(Type_list_save::None):
-        // {
-        //     return {false, nullptr};
-        // }
         default:
         {
             return {false, nullptr};
         }
     }
-
-    //return {false, nullptr};
+    return {false, nullptr};
 }
 
 template <typename Key, typename Value>
@@ -444,32 +434,5 @@ std::optional<Key> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save requ
         return delete_ell_list(Type_list_save::T2);
     }
 }
-
-
-// template <typename Key, typename Value>
-// bool Arc_cach<Key, Value>::access(const Key& key)
-// {
-//     if(capacity_ == 0)
-//     {
-//         return false;
-//     }
-
-//     auto found = general_hash_table.find(key);
-
-//     if(found == general_hash_table.end())
-//     {
-//         cache_one_ell_clean(Type_list_save::None);
-//         insert_new(key);
-
-//         return false;
-//     }
-
-//     const auto old_type = found -> second.type_list;
-//     const bool hit = old_type == Type_list_save::T1 || old_type == Type_list_save::T2; //определить попадание
-
-//     repeated_hit_transfer_T2(found);
-
-//     return hit;
-// }
 
 #endif
