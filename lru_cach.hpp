@@ -1,5 +1,5 @@
-#ifndef LRU_CACH
-#define LRU_CACH
+#ifndef LRU_CACH_
+#define LRU_CACH_
 
 #include <iostream>
 #include <vector>
@@ -12,8 +12,7 @@
 #include <cassert>
 #include <optional>
 
-#include "crutch.hpp"
-
+#include "cach_type.hpp"
 
 
 template <typename Key, typename Value>

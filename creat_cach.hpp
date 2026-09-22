@@ -1,5 +1,5 @@
-#ifndef CREAT_CACH
-#define CREAT_CACH
+#ifndef CREAT_CACH_
+#define CREAT_CACH_
 
 #include <iostream>
 #include <vector>
@@ -19,7 +19,7 @@
 #include "arc_cach.hpp"
 #include "lirs_cach.hpp"
 
-#include "crutch.hpp"
+#include "cach_type.hpp"
 
 
 struct Cache_name_size
@@ -56,7 +56,7 @@ template <typename Key, typename Value>
 using Cach_ptr = std::unique_ptr<Cache_variant<Key, Value>>;
 
 template <typename Key, typename Value>
-Cach_ptr<Key, Value> create_cache_one_ell(const Cache_name_size& parameter_ell)
+Cach_ptr<Key, Value> create_cache_one_ell(const Cache_name_size& parameter_ell) // создает один уровень кэша
 {
     using Variant = Cache_variant<Key, Value>;
 
@@ -81,7 +81,7 @@ Cach_ptr<Key, Value> create_cache_one_ell(const Cache_name_size& parameter_ell)
 }
 
 template <typename Key, typename Value>
-std::vector<Cach_ptr<Key, Value>> create_cach(const std::vector<Cache_name_size>& cach_list_name_size)
+std::vector<Cach_ptr<Key, Value>> create_cach(const std::vector<Cache_name_size>& cach_list_name_size) // создает сам кэш полностью
 {
     std::vector<Cach_ptr<Key, Value>> general_cach;
     general_cach.reserve(cach_list_name_size.size());
