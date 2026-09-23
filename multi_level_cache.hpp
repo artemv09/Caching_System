@@ -89,7 +89,7 @@ Multi_Level_Cach<Key, Value, Mode>::Multi_Level_Cach
     (const std::vector<Cache_name_size>& parameters, const Big_Data& data): 
     general_cach(create_cach<Key, Value>(parameters)), 
     big_data(&data),
-    hits_per_level(parameters.size(), 0)
+    hits_level(parameters.size(), 0)
 {
 }
 
@@ -125,6 +125,18 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode>::access_exclusive
 {
     std::size_t level_cach = 0;
     std::size_t general_size = general_cach.size();
+
+    // первая проверка при попадании не должна вообще ничего удалять или вставлять
+    Value* result_look_up = std::visit([&](auto& cache) ->  Value*
+                                {return cache.look_up(key);},
+                                *general_cach.at(level_cach));
+    if(result_look_up != nullptr) // обработка попадания в кэш
+    {
+        hits_level[level_cach]++;
+        return {true, *result_look_up};
+    }
+
+    level_cach++;
 
     while(level_cach < general_size)
     {

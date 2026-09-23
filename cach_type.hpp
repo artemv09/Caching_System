@@ -18,10 +18,13 @@ struct Entry
     Value value;
 };
 
-template <typename Key, typename Value> // тип для 
-struct Erase_ELL
-{
-    std::optional<Entry<Key, Value>> entry_erase;
-};
+// template <typename Key, typename Value> // тип для 
+// struct Erase_ELL
+// {
+//     std::optional<Entry<Key, Value>> entry_erase;
+// };
+
+template<typename Key, typename Value>
+using Erase_ELL = std::optional<Entry<Key, Value>>;
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef Q_CACH
-#define Q_CACH
+#ifndef Q_CACH_
+#define Q_CACH_
 
 #include <iostream>
 #include <vector>
@@ -12,10 +12,9 @@
 #include <new>
 #include <memory>
 
-#include "lfu_cach.hpp"
-#include "crutch.hpp"
+#include "cach_type.hpp"
 
-//TODO - когда будем добалять шаблоны испольщовать using для карты и списков
+
 template <typename Key, typename Value>
 class Two_Q_Cach
 {
@@ -57,7 +56,7 @@ class Two_Q_Cach
 
         void make_recent_am(Cach_Iterator position);// перенести существующий узел списка в head
         
-        Erase_ELL<Key, Value> rules_displacment();
+        Erase_ELL<Key, Value> rules_displacment(); // правила для выброса эллемента из am и a1in
 
         void insert_cach(const Key& key, const Value& value, Cach_List& list, Type_list type);
 
@@ -65,21 +64,17 @@ class Two_Q_Cach
         Erase_ELL<Key, Value> move_a1in_to_a1out(Directory_Iterator position_direct);//
 
         void erase_a1out();//удаляет последний эллемнт из a1out
-        Erase_ELL<Key, Value> erase_cach(Cach_List& list);//удаляет последний эллемент из am a1in
-
-        bool check(const Key& key, Directory& hash_table);
-
+        Erase_ELL<Key, Value> erase_cach_old(Cach_List& list);//удаляет последний эллемент из am a1in
                            
     public:
-        Access_Result<Value> look_up(const Key& key);
+        Value* look_up(const Key& key);
 
         Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
 
         bool erase_key(const Key& key);
 
-        Erase_ELL<Key, Value> find_del(const Key& key);
+        Erase_ELL<Key, Value> extract_entry(const Key& key);
         
-        explicit Two_Q_Cach();
         explicit Two_Q_Cach(std::size_t capacity);
 
         Two_Q_Cach(const Two_Q_Cach&) = delete;
@@ -97,13 +92,13 @@ class Two_Q_Cach
 };
 
 template <typename Key, typename Value>
-Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::find_del(const Key& key)
+Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::extract_entry(const Key& key)
 {
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {};
+        return std::nullopt;
     }
 
     Node& node = found -> second;
@@ -124,34 +119,33 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::find_del(const Key& key)
 
         case(Type_list::Am):
         {
-            Erase_ELL<Key, Value> erased{found->first, node.cach_position->value};
-            [[maybe_unused]] bool removed = erase_key(*erased.key_erase);
-            assert(removed);
+            Erase_ELL<Key, Value> erased{found -> first, (node.cach_position) -> value};
+            erase_key(erased -> key);
             return erased;
         }
 
         case(Type_list::A1out):
         {
-            return {};
+            return std::nullopt;
         }
     }
 
-    return {};
+    return std::nullopt;
 }
 
 template <typename Key, typename Value>
-Access_Result<Value> Two_Q_Cach<Key, Value>::look_up(const Key& key)
+Value* Two_Q_Cach<Key, Value>::look_up(const Key& key)
 {
     if(capacity_ == 0)
     {
-        return {false, nullptr};
+        return nullptr;
     }
 
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {false, nullptr};
+        return nullptr;
     }
 
     Node& node = found -> second;
@@ -160,16 +154,20 @@ Access_Result<Value> Two_Q_Cach<Key, Value>::look_up(const Key& key)
     {
         case(Type_list::A1in):
         {
-            return {true, &(node.cach_position -> value)};
+            return &(node.cach_position -> value);
         }
         case(Type_list::Am):
         {
             make_recent_am(node.cach_position);
 
-            return {true, &((node.cach_position) -> value)};
+            return &((node.cach_position) -> value);
+        }
+        case(Type_list::A1out):
+        {
+            return nullptr;
         }
     }
-    return {false, nullptr};
+    return nullptr;
 }
 
 template <typename Key, typename Value>
@@ -177,7 +175,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::insert_value(const Key& key, const
 {
     if(capacity_ == 0)
     {
-        return {key, value};
+        return Entry<Key, Value>{key, value};
     }
 
     auto found = hash_table.find(key);
@@ -200,7 +198,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::insert_value(const Key& key, const
             return erased;
         }
 
-        return {std::nullopt, std::nullopt};
+        return std::nullopt;
     }
 
     Erase_ELL<Key, Value> erased = rules_displacment();
@@ -285,7 +283,7 @@ void Two_Q_Cach<Key, Value>::move_a1out_to_am(Directory_Iterator position_direct
 
     a1out.erase(node.ghost_position);
 
-    node.ghost_position = Ghost_Iterator{};// замена аргументов в union
+    node.ghost_position = Ghost_Iterator{};
     node.cach_position = cach_position_beg;
     
     node.type = Type_list::Am;
@@ -296,8 +294,8 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::move_a1in_to_a1out(Directory_Itera
 {
     Node& node = position_direct -> second;
 
-    Erase_ELL<Key, Value> erased{position_direct->first, node.cach_position->value};
-    a1out.push_front(*erased.key_erase);
+    Erase_ELL<Key, Value> erased = Entry<Key, Value>{position_direct -> first, node.cach_position -> value};
+    a1out.push_front(erased -> key);
 
     Ghost_Iterator ghost_position_beg = a1out.begin();
 
@@ -305,7 +303,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::move_a1in_to_a1out(Directory_Itera
 
     node.type = Type_list::A1out;
 
-    node.cach_position = Cach_Iterator{};// замена аргументов в union
+    node.cach_position = Cach_Iterator{};
     node.ghost_position = ghost_position_beg;
     
     return erased;
@@ -316,17 +314,17 @@ void Two_Q_Cach<Key, Value>::erase_a1out()
 {
     Key key = a1out.back();
     auto it_hash = hash_table.find(key);
-    Node& node = it_hash-> second;
+    Node& node = it_hash -> second;
 
     a1out.erase(node.ghost_position);
     hash_table.erase(it_hash);
 }
 
 template <typename Key, typename Value>
-Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::erase_cach(Cach_List& list)
+Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::erase_cach_old(Cach_List& list)
 {
-    Erase_ELL<Key, Value> erased{list.back().key, list.back().value};
-    auto it_hash = hash_table.find(*erased.key_erase);
+    Erase_ELL<Key, Value> erased = Entry<Key, Value>{list.back().key, list.back().value};
+    auto it_hash = hash_table.find(erased -> key);
 
     Node& node = it_hash -> second;
 
@@ -343,23 +341,12 @@ void Two_Q_Cach<Key, Value>::make_recent_am(Cach_Iterator position)// перен
 }
 
 template <typename Key, typename Value>
-Two_Q_Cach<Key, Value>::Two_Q_Cach(): capacity_(0)
-{
-}
-
-template <typename Key, typename Value>
 Two_Q_Cach<Key, Value>::Two_Q_Cach(std::size_t capacity): capacity_(capacity), Kout(capacity / 2), Kin(capacity / 4)
 {
 }
 
 template <typename Key, typename Value>
-bool Two_Q_Cach<Key, Value>::check(const Key& key, Directory& hach_table)//проверка наличия ключа в таблице
-{
-    return hach_table.find(key) != hach_table.end();
-}
-
-template <typename Key, typename Value>
-Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::rules_displacment()//правила для выброса эллемента из am и a1in
+Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::rules_displacment()
 {
     Erase_ELL<Key, Value> erased;
 

@@ -26,20 +26,19 @@ class Lru_cach
         std::unordered_map<Key, Iterator> hash_table;
         std::size_t capacity_;
         
-        void make_recent(Iterator position);// перенести существующий узел списка в head
+        void make_recent(Iterator position); // перенести существующий узел списка в head
 
-        void evict_oldest();// удалить самый давний элемент из списка и хеш-таблицы
+        void evict_oldest(); // удалить самый давний элемент из списка и хеш-таблицы
         
     public:
-        Access_Result<Value> look_up(const Key& key);
+        Value* look_up(const Key& key); // проверить наличие и выполнить правило переноса
 
-        Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
+        Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value); // вставить новое значение
 
-        bool erase_key(const Key& key);
+        bool erase_key(const Key& key); // удалить по ключу
 
-        Erase_ELL<Key, Value> find_del(const Key& key);
+        Erase_ELL<Key, Value> extract_entry(const Key& key); // проверить наличие и вернуть эллемент
 
-        explicit Lru_cach();
         explicit Lru_cach(std::size_t capacity);
 
         Lru_cach(const Lru_cach&) = delete;
@@ -59,23 +58,21 @@ class Lru_cach
 template <typename Key, typename Value>
 Erase_ELL<Key, Value> Lru_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
-
-    if (capacity_ == 0)
+    if(capacity_ == 0)
     {
        return {key, value};
     }
 
     if(hash_table.find(key) != hash_table.end())
     {
-        return {};
+        return std::nullopt;
     }
 
-    // Копируем жертву до изменения контейнеров: Value может бросить исключение.
-    Erase_ELL<Key, Value> erased;
+    Erase_ELL<Key, Value> erased = std::nullopt;
     if(lru_cach.size() == capacity_)
     {
-        const auto& victim = lru_cach.back();
-        erased = {victim.key, victim.value};
+        const auto& last_cach_ell = lru_cach.back();
+        erased = Entry<Key, Value>{last_cach_ell.key, last_cach_ell.value};
     }
 
     lru_cach.push_front(Entry<Key, Value>{key, value});
@@ -85,7 +82,7 @@ Erase_ELL<Key, Value> Lru_cach<Key, Value>::insert_value(const Key& key, const V
         if(!hash_table.emplace(key, lru_cach.begin()).second)
         {
             lru_cach.pop_front();
-            return {};
+            return std::nullopt;
         }
     }
     catch (...)
@@ -94,7 +91,7 @@ Erase_ELL<Key, Value> Lru_cach<Key, Value>::insert_value(const Key& key, const V
         throw;
     }
 
-    if(erased.key_erase)
+    if(erased)
     {
         evict_oldest();
     }
@@ -107,8 +104,10 @@ bool Lru_cach<Key, Value>::erase_key(const Key& key)
 {
     auto it = hash_table.find(key);
 
-    if (it == hash_table.end())
+    if(it == hash_table.end())
+    {
         return false;
+    }
 
     lru_cach.erase(it -> second);
     hash_table.erase(it);
@@ -117,61 +116,54 @@ bool Lru_cach<Key, Value>::erase_key(const Key& key)
 }
 
 template <typename Key, typename Value>
-Access_Result<Value> Lru_cach<Key, Value>::look_up(const Key& key)
+Value* Lru_cach<Key, Value>::look_up(const Key& key)
 {
     if(capacity_ == 0)
     {
-        return {false, nullptr};
+        return nullptr;
     }
 
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {false, nullptr};
+        return nullptr;
     }
 
     make_recent(found -> second);
-
-    Entry<Key, Value>& entry = *(found -> second);
-    return {true, &entry.value};
+    return  &found -> second -> value;
 }
 
 
 template <typename Key, typename Value>
-Erase_ELL<Key, Value> Lru_cach<Key, Value>::find_del(const Key& key)
+Erase_ELL<Key, Value> Lru_cach<Key, Value>::extract_entry(const Key& key)
 {
     auto it = hash_table.find(key);
 
     if (it == hash_table.end())
     {
-       return {std::nullopt, std::nullopt};
+       return std::nullopt;
     }
 
-    Erase_ELL<Key, Value> del_ell = {key, it -> second -> value};
+    Erase_ELL<Key, Value> extract_ell = Entry<Key, Value>{key, it -> second -> value};
 
     lru_cach.erase(it -> second);
     hash_table.erase(it);
 
-    return del_ell;
+    return extract_ell;
 }
 
 template <typename Key, typename Value>
-void Lru_cach<Key, Value>::make_recent(Iterator position)// перенести существующий узел списка в head
+void Lru_cach<Key, Value>::make_recent(Iterator position)
 {
     lru_cach.splice(lru_cach.begin(), lru_cach, position);
 }
 
 template <typename Key, typename Value>
-void Lru_cach<Key, Value>::evict_oldest()// удалить самый давний элемент из списка и хеш-таблицы
+void Lru_cach<Key, Value>::evict_oldest()
 {
     hash_table.erase(lru_cach.back().key);
     lru_cach.pop_back();
-}
-
-template <typename Key, typename Value>
-Lru_cach<Key, Value>::Lru_cach(): capacity_(0)
-{
 }
 
 template <typename Key, typename Value>

@@ -1,5 +1,5 @@
-#ifndef LFU_CACH
-#define LFU_CACH
+#ifndef LFU_CACH_
+#define LFU_CACH_
 
 #include <iostream>
 #include <vector>
@@ -12,7 +12,7 @@
 #include <optional>
 #include <cassert>
 
-#include "crutch.hpp"
+#include "cach_type.hpp"
 
 template <typename Key, typename Value>
 class Lfu_cach
@@ -30,35 +30,34 @@ class Lfu_cach
             Iterator position;
             Frequency_Iterator frequency_position;//позиция в frequency 
         };
-        //можно это запихнуть в один ассоциативный конетейнер но это буде  очень нагромаждено
+
         Key_List lfu_cach;
 
-        std::unordered_map<Key, Node> hash_table;// здесь хранятится позиция и частота
-        std::unordered_map<int, Frequency_List> frequency_table;// нужно для опредения наименьшей частоты
+        std::unordered_map<Key, Node> hash_table; // здесь хранятится позиция и частота
+        std::unordered_map<int, Frequency_List> frequency_table; // нужно для опредения наименьшей частоты
 
         std::size_t capacity_;
         int min_frequency;
         
-        void insert_new(const Key& key, const Value& value);//создать новый эллемент и запись в хеш таблице
+        void insert_new(const Key& key, const Value& value); //создать новый эллемент и запись в хеш таблице
 
-        void move_existing(Node& node_key);//переместить существующий эллемент в начало
+        void move_existing(Node& node_key); //переместить существующий эллемент в начало
         
-        Frequency_Iterator new_ell_frequency_table(const Key& key);
+        Frequency_Iterator new_ell_frequency_table(const Key& key); // создаем новый эллемент в хэш
 
-        void relocation_frequency_table(Node& node_key);
+        void relocation_frequency_table(Node& node_key); // меняем место в хэш таблице
 
-        Key get_key_oldest();
+        Key get_key_oldest(); // возвращает ключ наименее часто вызываемого обекта
 
     public:
-        Access_Result<Value> look_up(const Key& key);
+        Value* look_up(const Key& key);
 
-        Erase_ELL<Key, Value> find_del(const Key& key);
+        Erase_ELL<Key, Value> extract_entry(const Key& key);
 
         Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
 
         bool erase_key(const Key& key);
     
-        explicit Lfu_cach();
         explicit Lfu_cach(std::size_t capacity);
  
         Lfu_cach(const Lfu_cach&) = delete;
@@ -76,53 +75,49 @@ class Lfu_cach
 };
 
 template <typename Key, typename Value>
-Erase_ELL<Key, Value> Lfu_cach<Key, Value>::find_del(const Key& key)
+Erase_ELL<Key, Value> Lfu_cach<Key, Value>::extract_entry(const Key& key)
 {
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {std::nullopt, std::nullopt};
+        return std::nullopt;
     }
 
-    Erase_ELL<Key, Value> erased{found->first, found->second.position->value};
-    bool removed = erase_key(*erased.key_erase);
-    assert(removed);
+    Erase_ELL<Key, Value> erased = Entry<Key, Value>{key, ((found -> second).position) -> value};
+
+    bool success = erase_key(key);
+
     return erased;
 }
 
 template <typename Key, typename Value>
-Erase_ELL<Key, Value> Lfu_cach<Key, Value>::insert_value(
-    const Key& key,
-    const Value& value
-)
+Erase_ELL<Key, Value> Lfu_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
     if(capacity_ == 0)
     {
-        return {key, value};
+        return Entry<Key, Value>{key, value};
     }
 
     if(hash_table.find(key) != hash_table.end())
     {
-        return {};
+        return std::nullopt;
     }
 
     Erase_ELL<Key, Value> erased;
 
-    if(lfu_cach.size() == capacity_)
+    if(lfu_cach.size() == capacity_) // получаем данные о самом старом эллементе
     {
-        Key evicted_key = get_key_oldest();
-        auto victim_it = hash_table.find(evicted_key);
-        assert(victim_it != hash_table.end());
-        erased = {evicted_key, victim_it->second.position->value};
+        Key cach_oldest_ell = get_key_oldest();
+        auto it_oldes_ell = hash_table.find(cach_oldest_ell);
+        erased = Entry<Key, Value>{cach_oldest_ell, ((it_oldes_ell -> second).position) -> value};
     }
 
     insert_new(key, value);
 
-    if(erased.key_erase)
+    if(erased)
     {
-        [[maybe_unused]] bool removed = erase_key(*erased.key_erase);
-        assert(removed);
+        erase_key(erased -> key);
     }
 
     return erased;
@@ -143,7 +138,7 @@ bool Lfu_cach<Key, Value>::erase_key(const Key& key)
 
     auto frequency_it = frequency_table.find(frequency);
 
-    (frequency_it -> second).erase(node.frequency_position);
+    (frequency_it -> second).erase(node.frequency_position); // удалить из списка данных частот
 
     const bool frequency_list_empty = (frequency_it -> second).empty();
 
@@ -164,34 +159,37 @@ bool Lfu_cach<Key, Value>::erase_key(const Key& key)
 
     if(frequency_list_empty && frequency == min_frequency)
     {
-        auto it = frequency_table.begin();
+        auto min_it = std::min_element(frequency_table.begin(), frequency_table.end(),
+            [](const auto& lhs, const auto& rhs)
+            {
+                return lhs.first < rhs.first;
+            }
+        );
 
-        min_frequency = it -> first;
-
-        ++it;
-
-        for(; it != frequency_table.end(); ++it)
-        {
-            min_frequency = std::min(min_frequency, it -> first);
-        }
+        min_frequency = min_it -> first;
     }
 
     return true;
 }
 
 template <typename Key, typename Value>
-Access_Result<Value> Lfu_cach<Key, Value>::look_up(const Key& key)
+Value* Lfu_cach<Key, Value>::look_up(const Key& key)
 {
+    if(capacity_ == 0)
+    {
+        return nullptr;
+    }
+
     auto found = hash_table.find(key);
 
     if(found == hash_table.end())
     {
-        return {false, nullptr};
+        return nullptr;
     }
 
     move_existing(found -> second);
 
-    return {true, &(found -> second.position -> value)};//вернуть адресс эллемент ав кэше
+    return &((found -> second).position) -> value; //вернуть адресс эллемента в кэше
 }
 
 template <typename Key, typename Value>
@@ -222,7 +220,7 @@ template <typename Key, typename Value>
 typename Lfu_cach<Key, Value>::Frequency_Iterator 
 Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавление нового эллемента в frequency_table
 {
-    auto result = frequency_table.try_emplace(1);//если такого списка нет то она создаст
+    auto result = frequency_table.try_emplace(1); //если такого списка нет то она создаст
     auto& frequency_list = result.first -> second;
     bool create_success = result.second;
 
@@ -244,15 +242,10 @@ Lfu_cach<Key, Value>::new_ell_frequency_table(const Key& key)//добавлен�
 }
 
 template <typename Key, typename Value>
-void Lfu_cach<Key, Value>::move_existing(Node& node_key)//переместить существующий эллемент
+void Lfu_cach<Key, Value>::move_existing(Node& node_key) 
 {
     relocation_frequency_table(node_key);
-    node_key.frequency++;//увеличили частоту на 1
-}
-
-template <typename Key, typename Value>
-Lfu_cach<Key, Value>::Lfu_cach(): capacity_(0), min_frequency(0)
-{
+    node_key.frequency++; //увеличили частоту на 1
 }
 
 template <typename Key, typename Value>
@@ -276,7 +269,7 @@ void Lfu_cach<Key, Value>::insert_new(const Key& key, const Value& value)
         }
         catch(...)
         {
-            auto frequency_it = frequency_table.find(1);//
+            auto frequency_it = frequency_table.find(1);
 
             (frequency_it -> second).erase(frequency_position);
 
@@ -298,17 +291,10 @@ void Lfu_cach<Key, Value>::insert_new(const Key& key, const Value& value)
 }
 
 template <typename Key, typename Value>
-Key Lfu_cach<Key, Value>::get_key_oldest()// возвращает ключ наименее часто вызываемого обекта
+Key Lfu_cach<Key, Value>::get_key_oldest()
 {
     auto min_frequency_list = frequency_table.find(min_frequency);
     Key min_key = (min_frequency_list -> second).back();
-
-    // (min_frequency_list -> second).pop_back();//удаляем этот эллемент из таблицы 
-    
-    // if (min_frequency_list -> second.empty())
-    // {
-    //     frequency_table.erase(min_key);
-    // }
 
     return min_key; 
 }
