@@ -1,5 +1,5 @@
-#ifndef OPT_CACH
-#define OPT_CACH
+#ifndef OPT_CACH_
+#define OPT_CACH_
 
 #include <iostream>
 #include <vector>
