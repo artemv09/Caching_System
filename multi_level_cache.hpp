@@ -141,7 +141,7 @@ Public_Access_Result<Value> Multi_Level_Cach<Key, Value, Mode>::access_exclusive
     while(level_cach < general_size)
     {
         Erase_ELL<Key, Value> result_find = std::visit([&](auto& cache) -> Erase_ELL<Key, Value>
-                                {return cache.find_del(key);},
+                                {return cache.extract_entry(key);},
                                 *general_cach.at(level_cach));
         if(result_find) // обработка попадания в кэш
         {
@@ -231,9 +231,9 @@ void general_fun(std::istream& input, std::ostream& output)
 
     FILE* config = std::fopen("config.txt", "r");
 
-    std::vector<Cache_name_size> cach_name_size_v = parsing_cach_parametr(config, std::cin);
+    std::vector<Cache_name_size> cach_name_size_vec = parsing_cach_parametr(config, std::cin);
 
-    Multi_Level_Cach<int, int, BUILD_CACHE_MODE> cach(cach_name_size_v ,data);
+    Multi_Level_Cach<int, int, Cach_Mode::Inclusive> cach(cach_name_size_vec ,data);
 
     std::fclose(config);
 

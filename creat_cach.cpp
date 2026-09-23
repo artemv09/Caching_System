@@ -19,11 +19,14 @@ std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& i
 
     for (std::size_t i = 0; i < count_level; ++i)
     {
-        char name[32];
-        if (std::fscanf(config, "%31s", name) != 1)
+        char buffer[32];
+
+        if (std::fscanf(config, "%31s", buffer) != 1)
         {
             throw std::runtime_error("не смог прочитать name");
         }
+
+        std::string name = buffer;
 
         std::size_t capacity;
         input >> capacity;

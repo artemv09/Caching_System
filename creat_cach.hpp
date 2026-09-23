@@ -12,6 +12,7 @@
 #include <cassert>
 #include <variant>
 #include <memory>
+#include <string>
 
 #include "lru_cach.hpp"
 #include "lfu_cach.hpp"

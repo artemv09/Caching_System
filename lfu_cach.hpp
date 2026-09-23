@@ -86,7 +86,7 @@ Erase_ELL<Key, Value> Lfu_cach<Key, Value>::extract_entry(const Key& key)
 
     Erase_ELL<Key, Value> erased = Entry<Key, Value>{key, ((found -> second).position) -> value};
 
-    bool success = erase_key(key);
+    erase_key(key);
 
     return erased;
 }

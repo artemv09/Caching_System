@@ -119,7 +119,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::extract_entry(const Key& key)
 
         case(Type_list::Am):
         {
-            Erase_ELL<Key, Value> erased{found -> first, (node.cach_position) -> value};
+            Erase_ELL<Key, Value> erased = Entry<Key, Value>{found -> first, (node.cach_position) -> value};
             erase_key(erased -> key);
             return erased;
         }
@@ -360,7 +360,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::rules_displacment()
         }
         else
         {
-            erased = erase_cach(am);
+            erased = erase_cach_old(am);
         }
     }
 

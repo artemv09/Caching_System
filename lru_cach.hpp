@@ -60,7 +60,7 @@ Erase_ELL<Key, Value> Lru_cach<Key, Value>::insert_value(const Key& key, const V
 {
     if(capacity_ == 0)
     {
-       return {key, value};
+       return Entry<Key, Value>{key, value};
     }
 
     if(hash_table.find(key) != hash_table.end())
