@@ -1,3 +1,4 @@
 AGENTS.md
 a.out
-config.txt
+config.txtbuild-exclusive/
+build-inclusive/
