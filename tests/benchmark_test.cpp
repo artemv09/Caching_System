@@ -203,9 +203,10 @@ std::vector<Key> generate_requests(std::size_t count_requests)
 
     requests.reserve(count_requests);
 
-    std::mt19937 generator(42); // после начала использования изменить
+    std::random_device rd;
+    std::mt19937 generator(rd());
 
-    std::uniform_int_distribution<Key> distribution(1, 1000);
+    std::uniform_int_distribution<Key> distribution(1, 10000);
 
     for(std::size_t i = 0; i < count_requests; ++i)
     {

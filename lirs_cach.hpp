@@ -309,6 +309,11 @@ Erase_ELL<Key, Value> Lirs_cach<Key, Value>::insert_new(const Key& key, const Va
         general_hash_table.emplace(key, node);
         HIR_resident_count_++;
 
+        if(capacity_ == 1)
+        {
+            prune_S();
+        }
+
         return erased;
     }
     else
