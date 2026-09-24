@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/caching_system.dir/main.cpp.o CMakeFiles/caching_system.dir/creat_cach.cpp.o -o caching_system 

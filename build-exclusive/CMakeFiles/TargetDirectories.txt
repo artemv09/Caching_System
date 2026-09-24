@@ -1,4 +1,0 @@
-/home/artem/CProjects/Caching_System/build-exclusive/CMakeFiles/caching_system.dir
-/home/artem/CProjects/Caching_System/build-exclusive/CMakeFiles/benchmark_test.dir
-/home/artem/CProjects/Caching_System/build-exclusive/CMakeFiles/edit_cache.dir
-/home/artem/CProjects/Caching_System/build-exclusive/CMakeFiles/rebuild_cache.dir
