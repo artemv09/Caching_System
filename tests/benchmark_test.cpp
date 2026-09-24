@@ -242,6 +242,6 @@ void print_result(
 
     std::cout << "Hit rate: " << 100.0 * total_hits / count_requests << "%\n";
 
-    std::cout << "=====================================\n";
+    std::cout << "======================================\n";
 }
 
