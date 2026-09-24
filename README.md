@@ -231,32 +231,6 @@ cmake --build build-exclusive
 
 ---
 
-## Конфигурация уровней
-
-Каждый уровень описывается структурой конфигурации:
-
-```cpp
-struct Cache_name_size
-{
-    std::string name_cach;
-    std::size_t capacity;
-    std::size_t hir_capacity;
-};
-```
-
-Пример конфигурации:
-
-```cpp
-std::vector<Cache_name_size> configuration = {
-    {"LRU", 32, 0},
-    {"ARC", 128, 0},
-    {"LIRS", 512, 64}
-};
-```
-
-Поле `hir_capacity` используется алгоритмами, которым требуется отдельный размер HIR-части, прежде всего LIRS.
-
----
 
 ## Benchmark
 
