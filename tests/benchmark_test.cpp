@@ -66,13 +66,13 @@ int main()
 
     Cach_Configs configurations = creat_all_configurations(variant_names_level, cach_level_size);
 
+    std::size_t test_number = 1;
 
     for(const auto& configuration : configurations)
     {
         Multi_Level_Cach<Key, Value, BUILD_CACHE_MODE> cache(configuration, data);
 
         std::size_t total_hits = 0;
-        std::size_t test_number = 1;
 
         for(const Key& key : generate_requests(number_requests))
         {
@@ -203,8 +203,7 @@ std::vector<Key> generate_requests(std::size_t count_requests)
 
     requests.reserve(count_requests);
 
-    std::random_device rd;
-    std::mt19937 generator(rd());
+    std::mt19937 generator(42);
 
     std::uniform_int_distribution<Key> distribution(1, 10000);
 
@@ -243,6 +242,6 @@ void print_result(
 
     std::cout << "Hit rate: " << 100.0 * total_hits / count_requests << "%\n";
 
-    std::cout << "====================================\n";
+    std::cout << "======================================\n";
 }
 
