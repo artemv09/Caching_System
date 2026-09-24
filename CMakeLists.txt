@@ -7,28 +7,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-# ============================================================
-# Выбор политики multi-level cache
-# ============================================================
+# ==========================================
+# Выбор режима Multi-Level Cache
+# ==========================================
 
 set(
     CACHE_MODE
     "Inclusive"
     CACHE STRING
-    "Cache hierarchy mode: Inclusive or Exclusive"
+    "Cache mode: Inclusive or Exclusive"
 )
 
 set_property(
     CACHE CACHE_MODE
-    PROPERTY STRINGS
-    Inclusive
-    Exclusive
+    PROPERTY STRINGS Inclusive Exclusive
 )
 
 
-# ============================================================
+# ==========================================
 # Основная программа
-# ============================================================
+# ==========================================
 
 add_executable(
     caching_system
@@ -38,95 +36,88 @@ add_executable(
 )
 
 target_include_directories(
-    caching_system PRIVATE
-
+    caching_system
+    PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_options(
-    caching_system PRIVATE
 
-    -Wall
-    -Wextra
-    -Wpedantic
-)
-
-
-# ============================================================
-# Тесты
-# ============================================================
+# ==========================================
+# Benchmark
+# ==========================================
 
 add_executable(
-    multi_level_test
+    benchmark_test
 
-    tests/multi_level_test.cpp
+    tests/benchmark_test.cpp
     creat_cach.cpp
 )
 
 target_include_directories(
-    multi_level_test PRIVATE
-
+    benchmark_test
+    PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_options(
-    multi_level_test PRIVATE
 
-    -Wall
-    -Wextra
-    -Wpedantic
-
-    -fsanitize=address,undefined
-    -fno-omit-frame-pointer
-)
-
-target_link_options(
-    multi_level_test PRIVATE
-
-    -fsanitize=address,undefined
-)
-
-
-# ============================================================
-# Передаём выбранную политику программе
-# ============================================================
+# ==========================================
+# Выбор Inclusive / Exclusive
+# ==========================================
 
 if(CACHE_MODE STREQUAL "Inclusive")
 
     target_compile_definitions(
-        caching_system PRIVATE
+        caching_system
+        PRIVATE
         CACHE_MODE_INCLUSIVE
     )
 
     target_compile_definitions(
-        multi_level_test PRIVATE
+        benchmark_test
+        PRIVATE
         CACHE_MODE_INCLUSIVE
     )
-
-    message(STATUS "Cache mode: Inclusive")
-
 
 elseif(CACHE_MODE STREQUAL "Exclusive")
 
     target_compile_definitions(
-        caching_system PRIVATE
+        caching_system
+        PRIVATE
         CACHE_MODE_EXCLUSIVE
     )
 
     target_compile_definitions(
-        multi_level_test PRIVATE
+        benchmark_test
+        PRIVATE
         CACHE_MODE_EXCLUSIVE
     )
-
-    message(STATUS "Cache mode: Exclusive")
-
 
 else()
 
     message(
         FATAL_ERROR
-        "Unknown CACHE_MODE='${CACHE_MODE}'. "
-        "Use Inclusive or Exclusive."
+        "CACHE_MODE must be Inclusive or Exclusive"
     )
 
 endif()
+
+
+# ==========================================
+# Предупреждения компилятора
+# ==========================================
+
+target_compile_options(
+    caching_system
+    PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+
+target_compile_options(
+    benchmark_test
+    PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)

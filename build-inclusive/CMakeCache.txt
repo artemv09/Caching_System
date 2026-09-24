@@ -14,7 +14,7 @@
 # EXTERNAL cache entries
 ########################
 
-//Cache hierarchy mode: Inclusive or Exclusive
+//Cache mode: Inclusive or Exclusive
 CACHE_MODE:STRING=Inclusive
 
 //Path to a program.

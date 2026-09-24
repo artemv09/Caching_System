@@ -130,17 +130,17 @@ caching_system/fast:
 .PHONY : caching_system/fast
 
 #=============================================================================
-# Target rules for targets named multi_level_test
+# Target rules for targets named benchmark_test
 
 # Build rule for target.
-multi_level_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 multi_level_test
-.PHONY : multi_level_test
+benchmark_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmark_test
+.PHONY : benchmark_test
 
 # fast build rule for target.
-multi_level_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/build
-.PHONY : multi_level_test/fast
+benchmark_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/build
+.PHONY : benchmark_test/fast
 
 creat_cach.o: creat_cach.cpp.o
 .PHONY : creat_cach.o
@@ -148,7 +148,7 @@ creat_cach.o: creat_cach.cpp.o
 # target to build an object file
 creat_cach.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caching_system.dir/build.make CMakeFiles/caching_system.dir/creat_cach.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/creat_cach.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/creat_cach.cpp.o
 .PHONY : creat_cach.cpp.o
 
 creat_cach.i: creat_cach.cpp.i
@@ -157,7 +157,7 @@ creat_cach.i: creat_cach.cpp.i
 # target to preprocess a source file
 creat_cach.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caching_system.dir/build.make CMakeFiles/caching_system.dir/creat_cach.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/creat_cach.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/creat_cach.cpp.i
 .PHONY : creat_cach.cpp.i
 
 creat_cach.s: creat_cach.cpp.s
@@ -166,7 +166,7 @@ creat_cach.s: creat_cach.cpp.s
 # target to generate assembly for a file
 creat_cach.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caching_system.dir/build.make CMakeFiles/caching_system.dir/creat_cach.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/creat_cach.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/creat_cach.cpp.s
 .PHONY : creat_cach.cpp.s
 
 main.o: main.cpp.o
@@ -193,29 +193,29 @@ main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caching_system.dir/build.make CMakeFiles/caching_system.dir/main.cpp.s
 .PHONY : main.cpp.s
 
-tests/multi_level_test.o: tests/multi_level_test.cpp.o
-.PHONY : tests/multi_level_test.o
+tests/benchmark_test.o: tests/benchmark_test.cpp.o
+.PHONY : tests/benchmark_test.o
 
 # target to build an object file
-tests/multi_level_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/tests/multi_level_test.cpp.o
-.PHONY : tests/multi_level_test.cpp.o
+tests/benchmark_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/tests/benchmark_test.cpp.o
+.PHONY : tests/benchmark_test.cpp.o
 
-tests/multi_level_test.i: tests/multi_level_test.cpp.i
-.PHONY : tests/multi_level_test.i
+tests/benchmark_test.i: tests/benchmark_test.cpp.i
+.PHONY : tests/benchmark_test.i
 
 # target to preprocess a source file
-tests/multi_level_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/tests/multi_level_test.cpp.i
-.PHONY : tests/multi_level_test.cpp.i
+tests/benchmark_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/tests/benchmark_test.cpp.i
+.PHONY : tests/benchmark_test.cpp.i
 
-tests/multi_level_test.s: tests/multi_level_test.cpp.s
-.PHONY : tests/multi_level_test.s
+tests/benchmark_test.s: tests/benchmark_test.cpp.s
+.PHONY : tests/benchmark_test.s
 
 # target to generate assembly for a file
-tests/multi_level_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_level_test.dir/build.make CMakeFiles/multi_level_test.dir/tests/multi_level_test.cpp.s
-.PHONY : tests/multi_level_test.cpp.s
+tests/benchmark_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark_test.dir/build.make CMakeFiles/benchmark_test.dir/tests/benchmark_test.cpp.s
+.PHONY : tests/benchmark_test.cpp.s
 
 # Help Target
 help:
@@ -225,17 +225,17 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... benchmark_test"
 	@echo "... caching_system"
-	@echo "... multi_level_test"
 	@echo "... creat_cach.o"
 	@echo "... creat_cach.i"
 	@echo "... creat_cach.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... tests/multi_level_test.o"
-	@echo "... tests/multi_level_test.i"
-	@echo "... tests/multi_level_test.s"
+	@echo "... tests/benchmark_test.o"
+	@echo "... tests/benchmark_test.i"
+	@echo "... tests/benchmark_test.s"
 .PHONY : help
 
 

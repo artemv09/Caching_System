@@ -33,7 +33,7 @@ inline constexpr Cach_Mode BUILD_CACHE_MODE =
 
 #else
 
-#error "Cache mode is not defined"
+//#error "Cache mode is not defined"
 
 #endif
 
@@ -78,6 +78,24 @@ class Multi_Level_Cach
             {
                return access_exclusive(key);
             }
+        }
+
+        std::size_t total_capacity() const
+        {
+            std::size_t total = 0;
+
+            for(const auto& level : general_cach)
+            {
+                total += std::visit(
+                    [](const auto& cache)
+                    {
+                        return cache.capacity();
+                    },
+                    *level
+                );
+            }
+
+            return total;
         }
 
         Multi_Level_Cach(const std::vector<Cache_name_size>& parameters, const Big_Data& data); 
@@ -245,21 +263,21 @@ void general_fun(std::istream& input, std::ostream& output)
     std::size_t count = 0;
     std::size_t count_hit = 0;
 
-    std::vector<Key> list_key_requests(count_key);
+    std::vector<Key> list_key_requests;
+    list_key_requests.reserve(count_key);
     
     while(count < count_key)
     {
         Key key = 0;
         input >> key;
 
-        list_key_requests.push_front(key);
+        list_key_requests.push_back(key);
 
         auto result = cach.access(key);
         Value value = result.sought_element;
 
         if(result.hit)
         {
-            output << "Попаджание в L" << count + 1 << "\n";
             count_hit++;
         }
         output << "Key " << key << " == " << value << "\n";
@@ -269,14 +287,21 @@ void general_fun(std::istream& input, std::ostream& output)
     output << "\n========== Cache hit statistics ==========\n\n";
 
     output << "Колличество попаданий моего кэша == " << count_hit << "\n";
-    for(int i = 0; i < cach.hits_level.size(); i++)
+    for(std::size_t i = 0; i < cach.hits_level.size(); i++)
     {
-        output << "Колличество попаданий в L" << i - 1 << " == " << count_hit << "\n";
+        output << "Колличество попаданий в L" << i + 1 << " == " << cach.hits_level.at(i) << "\n";
     }
 
     output << "\n==========================================\n\n";
 
-    Opt_cach opt_cach(list_key_requests);
+    OptCache<Key, Value> opt_cach(cach.total_capacity(), list_key_requests, data);
+
+    for(const Key& key : list_key_requests)
+    {
+        opt_cach.access(key);
+    }
+
+    opt_cach.print_statistics(output);
 }
 
 #endif

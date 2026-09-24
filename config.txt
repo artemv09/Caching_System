@@ -1,1 +1,1 @@
-2 ARC LRU
+2 LRU LRU

@@ -1,87 +1,194 @@
 #ifndef OPT_CACH_
 #define OPT_CACH_
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <list>
-#include <unordered_map>
-#include <iterator>
-#include <cstddef>
-#include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <deque>
+#include <iterator>
+#include <list>
+#include <ostream>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
+#include "cach_type.hpp"
 
-template <typename Key>
-class Opt_cach
+template <typename Key, typename Value>
+class OptCache
 {
     private:
-        using List_Key = std::list<Key>;
-        using Iterator = typename Key_List::iterator;
+        using Big_Data = std::unordered_map<Key, Value>;
+        using Cach_List = std::list<Entry<Key, Value>>;
+        using Cach_Iterator = typename Cach_List::iterator;
 
-        std::size_t capacity_;
-        std::size_t size_;
+        struct Node
+        {
+            std::deque<std::size_t> future_positions;
+            Cach_Iterator resident_position;
+        };
 
-        using Directory = std::unordered_map<Key, Iterator>;
+        using Directory = std::unordered_map<Key, Node>;
         using Directory_Iterator = typename Directory::iterator;
 
-        const std::vector<Key>& full_data;
-        Directory hash_table;
-        List_Key list_cach;
+        Cach_List resident;
 
+        Directory future_requests;
+        const Big_Data* big_data;
 
-        Iterator choose_who_delete();
-        void insert_new(const Key& key);
-    
+        std::size_t capacity_;
+        std::size_t request_count_;
+        std::size_t current_position_ = 0;
+        std::size_t hit_count_ = 0;
+
+        const Value& get_long_data(const Key& key) const;
+        
+        Directory_Iterator choose_who_delete();
+
     public:
-        explicit Opt_cach();
-        explicit Opt_cach(std::size_t capacity, const std::vector<Key>& full_data);
+        explicit OptCache(std::size_t capacity, const std::vector<Key>& requests, const Big_Data& data);
 
-        Opt_cach(const Opt_cach&) = delete;
-        Opt_cach& operator=(const Opt_cach&) = delete;
+        OptCache(const OptCache&) = delete;
+        OptCache& operator=(const OptCache&) = delete;
 
-        bool access(const Key& key);//функция для обединения всего в одну систему
+        Public_Access_Result<Value> access(const Key& key);
 
         std::size_t size() const noexcept
         {
-            return list_cach.size();
+            return resident.size();
         }
 
         std::size_t capacity() const noexcept
         {
             return capacity_;
         }
+
+        std::size_t hits() const noexcept
+        {
+            return hit_count_;
+        }
+
+        void print_statistics(std::ostream& output) const;
 };
 
-template <typename Key>
-bool Opt_cach<Key>::access(const Key& key)
+template <typename Key, typename Value>
+OptCache<Key, Value>::OptCache(std::size_t capacity, const std::vector<Key>& requests,
+                             const Big_Data& data):
+    big_data(&data),
+    capacity_(capacity),
+    request_count_(requests.size())
 {
-    if(capacity_ == false)
+    for(std::size_t position = 0; position < requests.size(); ++position)
     {
-        return false;
+        auto inserted = future_requests.try_emplace(requests[position]);
+        Node& node = inserted.first -> second;
+
+        if(inserted.second)
+        {
+            node.resident_position = resident.end();
+        }
+
+        node.future_positions.push_back(position);
     }
-
-    auto found = general_hash_table.find(key);
-
-    if(found == general_hash_table.end())
-    {
-        insert_new(key);
-        return false;
-    }
-
-    return true;
 }
 
-template <typename Key>
-void Opt_cach<Key>::insert_new(const Key& key)
+template <typename Key, typename Value>
+const Value& OptCache<Key, Value>::get_long_data(const Key& key) const
 {
-    if(size() != capacity_)
+    auto found = big_data -> find(key);
+
+    if(found == big_data -> end())
     {
-        list_cach.push_front(key);
-        hash_table.emplace(key, list_cach.begin());
-        return;
+        throw std::runtime_error("попытка найти не существующий ключ");
     }
 
+    return found -> second;
+}
+
+template <typename Key, typename Value>
+typename OptCache<Key, Value>::Directory_Iterator OptCache<Key, Value>::choose_who_delete()
+{
+    auto victim = future_requests.end();
+    std::size_t farthest_position = 0;
+
+    for(const auto& entry : resident)
+    {
+        auto found = future_requests.find(entry.key);
+
+        const auto& positions = found -> second.future_positions;
+
+        if(positions.empty())
+        {
+            return found;
+        }
+
+        if(victim == future_requests.end() || positions.front() > farthest_position)
+        {
+            victim = found;
+            farthest_position = positions.front();
+        }
+    }
+
+    return victim;
+}
+
+template <typename Key, typename Value>
+Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
+{
+    if(current_position_ == request_count_)
+    {
+        throw std::logic_error("OPT: история запросов уже обработана");
+    }
+
+    auto found = future_requests.find(key);
+
+    if(found == future_requests.end() || found -> second.future_positions.empty() ||
+       found -> second.future_positions.front() != current_position_)
+    {
+        throw std::logic_error("OPT: ключ не совпадает со следующим запросом истории");
+    }
+
+    Node& node = found -> second;
+    const bool hit = node.resident_position != resident.end();
+    const Value& value = hit ? node.resident_position -> value : get_long_data(key);
+
+    Public_Access_Result<Value> result{hit, value};
+
+    if(!hit && capacity_ != 0)
+    {
+        auto victim = future_requests.end();
+
+        if(size() == capacity_)
+        {
+            victim = choose_who_delete();
+        }
+
+        resident.emplace_back(key, value);
+        node.resident_position = std::prev(resident.end());
+
+        if(victim != future_requests.end())
+        {
+            resident.erase(victim -> second.resident_position);
+            victim -> second.resident_position = resident.end();
+        }
+    }
+
+    node.future_positions.pop_front();
+    ++current_position_;
+
+    if(hit)
+    {
+        ++hit_count_;
+    }
+
+    return result;
+}
+
+template <typename Key, typename Value>
+void OptCache<Key, Value>::print_statistics(std::ostream& output) const
+{
+    output << "========== OPT statistics ================\n"
+           << "Total hits: " << hits() << '\n'
+           << "==========================================\n";
 }
 
 #endif

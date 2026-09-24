@@ -225,4 +225,7 @@ CMakeFiles/caching_system.dir/main.cpp.o: \
  /home/artem/CProjects/Caching_System/lirs_cach.hpp \
  /home/artem/CProjects/Caching_System/creat_cach.hpp \
  /usr/include/c++/13/variant /usr/include/c++/13/bits/parse_numbers.h \
- /home/artem/CProjects/Caching_System/multi_level_cache.hpp
+ /home/artem/CProjects/Caching_System/multi_level_cache.hpp \
+ /home/artem/CProjects/Caching_System/opt_cach.hpp \
+ /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
+ /usr/include/c++/13/bits/deque.tcc

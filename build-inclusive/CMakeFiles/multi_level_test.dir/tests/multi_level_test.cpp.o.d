@@ -226,4 +226,7 @@ CMakeFiles/multi_level_test.dir/tests/multi_level_test.cpp.o: \
  /home/artem/CProjects/Caching_System/lfu_cach.hpp \
  /home/artem/CProjects/Caching_System/2Q_cach.hpp \
  /home/artem/CProjects/Caching_System/arc_cach.hpp \
- /home/artem/CProjects/Caching_System/lirs_cach.hpp
+ /home/artem/CProjects/Caching_System/lirs_cach.hpp \
+ /home/artem/CProjects/Caching_System/opt_cach.hpp \
+ /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
+ /usr/include/c++/13/bits/deque.tcc
