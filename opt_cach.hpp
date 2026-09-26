@@ -23,7 +23,7 @@ class OptCache
 
         struct Node
         {
-            std::deque<std::size_t> future_positions;
+            std::deque<std::size_t> future_positions; // заполняем его в конструкторе содержит все обращения 
             Cach_Iterator resident_position;
         };
 
@@ -32,7 +32,7 @@ class OptCache
 
         Cach_List resident;
 
-        Directory future_requests;
+        Directory future_requests_hash;
         const Big_Data* big_data;
 
         std::size_t capacity_;
@@ -71,15 +71,14 @@ class OptCache
 };
 
 template <typename Key, typename Value>
-OptCache<Key, Value>::OptCache(std::size_t capacity, const std::vector<Key>& requests,
-                             const Big_Data& data):
+OptCache<Key, Value>::OptCache(std::size_t capacity, const std::vector<Key>& requests, const Big_Data& data):
     big_data(&data),
     capacity_(capacity),
     request_count_(requests.size())
 {
-    for(std::size_t position = 0; position < requests.size(); ++position)
+    for(std::size_t position = 0; position < requests.size(); position++)
     {
-        auto inserted = future_requests.try_emplace(requests[position]);
+        auto inserted = future_requests_hash.try_emplace(requests[position]);
         Node& node = inserted.first -> second;
 
         if(inserted.second)
@@ -107,21 +106,21 @@ const Value& OptCache<Key, Value>::get_long_data(const Key& key) const
 template <typename Key, typename Value>
 typename OptCache<Key, Value>::Directory_Iterator OptCache<Key, Value>::choose_who_delete()
 {
-    auto victim = future_requests.end();
+    auto victim = future_requests_hash.end();
     std::size_t farthest_position = 0;
 
     for(const auto& entry : resident)
     {
-        auto found = future_requests.find(entry.key);
+        auto found = future_requests_hash.find(entry.key);
 
-        const auto& positions = found -> second.future_positions;
+        const auto& positions = (found -> second).future_positions;
 
         if(positions.empty())
         {
             return found;
         }
 
-        if(victim == future_requests.end() || positions.front() > farthest_position)
+        if(victim == future_requests_hash.end() || positions.front() > farthest_position)
         {
             victim = found;
             farthest_position = positions.front();
@@ -139,10 +138,10 @@ Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
         throw std::logic_error("OPT: история запросов уже обработана");
     }
 
-    auto found = future_requests.find(key);
+    auto found = future_requests_hash.find(key);
+    auto& future_deq_node = (found -> second).future_positions;
 
-    if(found == future_requests.end() || found -> second.future_positions.empty() ||
-       found -> second.future_positions.front() != current_position_)
+    if(found == future_requests_hash.end() || future_deq_node.empty() || future_deq_node.front() != current_position_)
     {
         throw std::logic_error("OPT: ключ не совпадает со следующим запросом истории");
     }
@@ -155,7 +154,7 @@ Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
 
     if(!hit && capacity_ != 0)
     {
-        auto victim = future_requests.end();
+        auto victim = future_requests_hash.end();
 
         if(size() == capacity_)
         {
@@ -165,19 +164,19 @@ Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
         resident.emplace_back(key, value);
         node.resident_position = std::prev(resident.end());
 
-        if(victim != future_requests.end())
+        if(victim != future_requests_hash.end())
         {
-            resident.erase(victim -> second.resident_position);
-            victim -> second.resident_position = resident.end();
+            resident.erase((victim -> second).resident_position);
+            (victim -> second).resident_position = resident.end();
         }
     }
 
     node.future_positions.pop_front();
-    ++current_position_;
+    current_position_++;
 
     if(hit)
     {
-        ++hit_count_;
+        hit_count_++;
     }
 
     return result;
@@ -186,9 +185,10 @@ Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
 template <typename Key, typename Value>
 void OptCache<Key, Value>::print_statistics(std::ostream& output) const
 {
-    output << "========== OPT statistics ================\n"
+    output << "\n========== OPT statistics ============\n"
            << "Total hits: " << hits() << '\n'
-           << "==========================================\n";
+           << "Total capacity: " << capacity() << '\n'
+           << "======================================\n";
 }
 
 #endif

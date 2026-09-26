@@ -68,13 +68,15 @@ int main()
 
     std::size_t test_number = 1;
 
+    std::vector<Key> list_key_requests = generate_requests(number_requests);
+
     for(const auto& configuration : configurations)
     {
         Multi_Level_Cach<Key, Value, BUILD_CACHE_MODE> cache(configuration, data);
 
         std::size_t total_hits = 0;
 
-        for(const Key& key : generate_requests(number_requests))
+        for(const Key& key : list_key_requests)
         {
             auto result = cache.access(key);
 
@@ -88,6 +90,22 @@ int main()
 
         test_number++;
     }
+
+    std::size_t total_capacit = 0;
+    for(Level_size& cach_level : cach_level_size)
+    {
+        total_capacit += cach_level.capacity;
+    }
+
+    OptCache<Key, Value> opt_cach(total_capacit, list_key_requests, data);
+
+    for(const Key& key : list_key_requests)
+    {
+        opt_cach.access(key);
+    }
+
+    opt_cach.print_statistics(std::cout);
+
     return 0;
 }
 

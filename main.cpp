@@ -14,8 +14,6 @@ int main()
 {
     general_fun<int, int>(std::cin, std::cout);
     std::cout << "конец\n";
-
-    std::vector<int> as {1, 2, 3, 4, 4};
     
     return 0;
 }
