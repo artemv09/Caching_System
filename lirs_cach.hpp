@@ -484,7 +484,7 @@ Lirs_cach<Key, Value>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity)
 {
     if(HIR_capacity > capacity || (capacity > 1 && (HIR_capacity == 0 || HIR_capacity == capacity)))
     {
-        throw std::invalid_argument("Нельзя делать HIR = 1 при capciy = 1");
+        throw std::invalid_argument("Неправильно выдедение памяти для LIRS");
     }
 
     if(capacity == 1)
