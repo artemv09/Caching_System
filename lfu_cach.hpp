@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <optional>
+#include <limits>
 #include <cassert>
 
 #include "cach_type.hpp"
@@ -50,6 +51,9 @@ class Lfu_cach
         Key get_key_oldest(); // возвращает ключ наименее часто вызываемого обекта
 
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         Value* look_up(const Key& key);
 
         Erase_ELL<Key, Value> extract_entry(const Key& key);
@@ -297,6 +301,42 @@ Key Lfu_cach<Key, Value>::get_key_oldest()
     Key min_key = (min_frequency_list -> second).back();
 
     return min_key; 
+}
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> Lfu_cach<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+
+    result.resident.assign(lfu_cach.begin(), lfu_cach.end());
+    result.consistent = hash_table.size() == lfu_cach.size();
+
+    std::size_t count = 0;
+
+    int minimum = hash_table.empty() ? 0 : std::numeric_limits<int>::max();
+
+    for(const auto& [frequency, keys] : frequency_table)
+    {
+        result.queues.emplace_back("frequency=" + std::to_string(frequency),
+            std::vector<Key>(keys.begin(), keys.end()));
+        minimum = std::min(minimum, frequency);
+        result.consistent = result.consistent && !keys.empty();
+
+        for(auto it = keys.begin(); it != keys.end(); ++it)
+        {
+            const auto& node = hash_table.at(*it);
+
+            result.consistent = result.consistent && node.frequency == frequency &&
+                node.frequency_position == it && node.position -> key == *it;
+
+            ++count;
+        }
+    }
+    result.consistent = result.consistent && count == size() && minimum == min_frequency;
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+    
+    return result;
 }
 
 #endif

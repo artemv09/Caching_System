@@ -45,6 +45,9 @@ class OptCache
         Directory_Iterator choose_who_delete();
 
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         explicit OptCache(std::size_t capacity, const std::vector<Key>& requests, const Big_Data& data);
 
         OptCache(const OptCache&) = delete;
@@ -139,9 +142,13 @@ Public_Access_Result<Value> OptCache<Key, Value>::access(const Key& key)
     }
 
     auto found = future_requests_hash.find(key);
+    if(found == future_requests_hash.end())
+    {
+        throw std::logic_error("OPT: ключ отсутствует в истории запросов");
+    }
     auto& future_deq_node = (found -> second).future_positions;
 
-    if(found == future_requests_hash.end() || future_deq_node.empty() || future_deq_node.front() != current_position_)
+    if(future_deq_node.empty() || future_deq_node.front() != current_position_)
     {
         throw std::logic_error("OPT: ключ не совпадает со следующим запросом истории");
     }
@@ -189,6 +196,21 @@ void OptCache<Key, Value>::print_statistics(std::ostream& output) const
            << "Total hits: " << hits() << '\n'
            << "Total capacity: " << capacity() << '\n'
            << "======================================\n";
+}
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> OptCache<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+    result.resident.assign(resident.begin(), resident.end());
+    for(const auto& entry : resident)
+    {
+        result.consistent = result.consistent &&
+            future_requests_hash.at(entry.key).resident_position -> key == entry.key;
+    }
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+    return result;
 }
 
 #endif

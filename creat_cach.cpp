@@ -1,52 +1,111 @@
 #include "creat_cach.hpp"
+#include <charconv>
 
-std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& input)
+// from_chars преобразует текст в число; ниже ec и ptr проверяют ошибку и конец токена.
+std::size_t read_size(std::istream& input, const std::string& label, std::size_t limit)
 {
-    if (config == nullptr)
+    std::string token;
+    long long value = 0;
+
+    if(!(input >> token))
     {
-        throw std::runtime_error("config file не открылся");
+        throw std::invalid_argument("Не прочитано: " + label);
     }
 
-    std::size_t count_level;
+    const auto parsed = std::from_chars(token.data(), token.data() + token.size(), value);
 
-    if (std::fscanf(config, "%zu", &count_level) != 1)
+    if(parsed.ec != std::errc{} || parsed.ptr != token.data() + token.size() || value < 0 ||
+       static_cast<unsigned long long>(value) > limit)
     {
-        throw std::runtime_error("не смог прочитать count");
+        throw std::invalid_argument("Недопустимое число: " + label);
     }
 
-    std::vector<Cache_name_size> general_cach;
-    general_cach.reserve(count_level);
+    return static_cast<std::size_t>(value);
+}
 
-    for (std::size_t i = 0; i < count_level; ++i)
+// Отклоняет лишние данные в файле конфигурации; нужен только этому парсеру.
+static void require_end(std::istream& input)
+{
+    std::string extra;
+
+    if(input >> extra)
     {
-        char buffer[32];
+        throw std::invalid_argument("Лишние данные: " + extra);
+    }
 
-        if (std::fscanf(config, "%31s", buffer) != 1)
+    if(!input.eof())
+    {
+        throw std::runtime_error("Ошибка чтения потока");
+    }
+}
+
+// Сначала проверяет файл с именами, затем читает размеры из консоли.
+std::vector<Cache_name_size> parsing_cach_parametr(std::istream& config, std::istream& input)
+{
+    const auto count = read_size(config, "число уровней", 64);
+
+    if(count == 0)
+    {
+        throw std::invalid_argument("Нужен хотя бы один уровень");
+    }
+
+    std::vector<Cache_name_size> result;
+    result.reserve(count);
+
+    for(std::size_t i = 0; i < count; ++i)
+    {
+        Cache_name_size level{};
+
+        if(!(config >> level.name_cach))
         {
-            throw std::runtime_error("не смог прочитать name");
+            throw std::invalid_argument("Не прочитано имя политики");
         }
+        
+        cache_type(level.name_cach);
+        result.push_back(level);
+    }
 
-        std::string name = buffer;
+    require_end(config);
 
-        std::size_t capacity;
-        input >> capacity;
-    
-        if(name == "LIRS")
+    for(auto& level : result)
+    {
+        level.capacity = read_size(input, "capacity", MAX_PAGE_KEY);
+
+        if(level.name_cach == "LIRS")
         {
-            std::size_t hir_capacity;
-            if (!(input >> hir_capacity))
-            {
-                throw std::runtime_error("не смог прочитать capacity");
-            }
-
-            general_cach.push_back(Cache_name_size{std::string{name}, capacity, hir_capacity});
-        }
-        else
-        {
-            general_cach.push_back(Cache_name_size{std::string{name}, capacity, 0});
+            level.hir_capacity = read_size(input, "HIR", MAX_PAGE_KEY);
+            // Конструктор задаёт общие для программы и тестов правила HIR.
+            Lirs_cach<int, int> validate(level.capacity, level.hir_capacity);
         }
     }
-    return general_cach;
+    return result;
+}
+
+// Возвращает один полный поток запросов, не ожидая EOF после N ключей.
+std::vector<int> read_requests(std::istream& input, int max_key)
+{
+    if(max_key < 1 || max_key > MAX_PAGE_KEY)
+    {
+        throw std::invalid_argument("Недопустимый предел ключей");
+    }
+
+    const auto count = read_size(input, "количество запросов", MAX_REQUESTS);
+
+    std::vector<int> keys;
+    keys.reserve(count);
+
+    for(std::size_t i = 0; i < count; i++)
+    {
+        const auto key = read_size(input, "ключ", static_cast<std::size_t>(max_key));
+
+        if(key == 0)
+        {
+            throw std::invalid_argument("Ключи начинаются с 1");
+        }
+
+        keys.push_back(static_cast<int>(key));
+    }
+    return keys;
 }
 
 Type_Cach cache_type(const std::string& name)

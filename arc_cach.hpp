@@ -68,6 +68,9 @@ class Arc_cach
         Erase_ELL<Key, Value> cache_one_ell_clean(Type_list_save request_in); //отвечает за выбор логики удаления и перемещения эллементов
 
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         Erase_ELL<Key, Value> extract_entry(const Key& key);
 
         Value* look_up(const Key& key);
@@ -164,22 +167,40 @@ Value* Arc_cach<Key, Value>::look_up(const Key& key)
 template <typename Key, typename Value>
 Erase_ELL<Key, Value> Arc_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
-   if(capacity_ == 0)
+    try
     {
-        return Entry<Key, Value>{key, value};
+       if(capacity_ == 0)
+        {
+            return Entry<Key, Value>{key, value};
+        }
+
+        auto found = general_hash_table.find(key);
+
+        if(found != general_hash_table.end())
+        {
+            // Повторная вставка резидента не является новым обращением.
+            if(found -> second.type_list == Type_list_save::T1 ||
+               found -> second.type_list == Type_list_save::T2)
+            {
+                return std::nullopt;
+            }
+            return repeated_hit_transfer_T2(found, value);
+        }
+
+        auto erased = cache_one_ell_clean(Type_list_save::None); // обработка нового ключа + значение
+        insert_new(key, value);
+
+        return erased;
     }
-
-    auto found = general_hash_table.find(key);
-
-    if(found != general_hash_table.end())
+    catch(...)
     {
-        return repeated_hit_transfer_T2(found, value);
+        // Неудачная вставка не должна оставлять несогласованное состояние.
+        while(B1_.size() + B2_.size() > capacity_)
+        {
+            delete_ell_list(B2_.empty() ? Type_list_save::B1 : Type_list_save::B2);
+        }
+        throw;
     }
-
-    auto erased = cache_one_ell_clean(Type_list_save::None); // обработка нового ключа + значение
-    insert_new(key, value);
-
-    return erased;
 }
 
 template <typename Key, typename Value>
@@ -441,6 +462,38 @@ Erase_ELL<Key, Value> Arc_cach<Key, Value>::cache_one_ell_clean(Type_list_save r
         return delete_ell_list(Type_list_save::T1);
     }
     return std::nullopt;
+}
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> Arc_cach<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+
+    result.resident.assign(T1_.begin(), T1_.end());
+    result.resident.insert(result.resident.end(), T2_.begin(), T2_.end());
+    result.queues = {{"T1", {}}, {"T2", {}}, {"B1", {B1_.begin(), B1_.end()}},
+                     {"B2", {B2_.begin(), B2_.end()}}};
+
+    for(const auto& entry : T1_) result.queues[0].second.push_back(entry.key);
+
+    for(const auto& entry : T2_) result.queues[1].second.push_back(entry.key);
+
+    result.target = target_recent_size_;
+    result.consistent = result.target <= capacity_ && T1_.size() + B1_.size() <= capacity_ &&
+        B1_.size() + B2_.size() <= capacity_ &&
+        general_hash_table.size() == size() + B1_.size() + B2_.size();
+
+    for(const auto& [key, node] : general_hash_table)
+    {
+        const bool resident_node = node.type_list == Type_list_save::T1 || node.type_list == Type_list_save::T2;
+        result.consistent = result.consistent &&
+            (resident_node ? node.cach_position -> key == key : *node.ghost_position == key);
+    }
+
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+    
+    return result;
 }
 
 #endif

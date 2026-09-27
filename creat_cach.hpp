@@ -2,6 +2,12 @@
 #define CREAT_CACH_
 
 #include <iostream>
+#include <istream>
+#include <limits>
+#include <type_traits>
+#include <cstdint>
+#include <utility>
+#include <stdexcept>
 #include <vector>
 #include <string>
 #include <list>
@@ -22,6 +28,10 @@
 
 #include "cach_type.hpp"
 
+
+// Пределы ручного ввода и benchmark; вместимость шаблонных кешей ими не ограничена.
+inline constexpr std::size_t MAX_REQUESTS = 1000000;
+inline constexpr int MAX_PAGE_KEY = 1000000;
 
 struct Cache_name_size
 {
@@ -49,7 +59,57 @@ using Cache_variant = std::variant<
     Lirs_cach<Key, Value>
 >;
 
-std::vector<Cache_name_size> parsing_cach_parametr(FILE* config, std::istream& input);
+// Читает неотрицательное целое; проверяет весь токен и предел до size_t.
+std::size_t read_size(std::istream& input, const std::string& label, std::size_t limit);
+
+// Из config читает число уровней и имена, из input — capacity и HIR для LIRS.
+std::vector<Cache_name_size> parsing_cach_parametr(std::istream& config, std::istream& input);
+
+// Читает N ключей выбранного типа, не ожидая EOF после последнего.
+// Для целочисленных Key действует диапазон 1..max_key; остальные читаются через >>.
+template <typename Key>
+std::vector<Key> read_requests(std::istream& input, int max_key = 10)
+{
+    // if constexpr выбирает ветку при компиляции: строкам числовой предел не нужен.
+    if constexpr(std::is_integral_v<Key>)
+    {
+        if(max_key < 1 || max_key > MAX_PAGE_KEY)
+        {
+            throw std::invalid_argument("Недопустимый предел ключей");
+        }
+    }
+
+    const auto count = read_size(input, "количество запросов", MAX_REQUESTS);
+
+    std::vector<Key> keys;
+    keys.reserve(count);
+
+    for(std::size_t i = 0; i < count; i++)
+    {
+        Key key{};
+        if constexpr(std::is_integral_v<Key>)
+        {
+            const auto number = read_size(input, "ключ", static_cast<std::size_t>(max_key));
+            if(number == 0)
+            {
+                throw std::invalid_argument("Ключи начинаются с 1");
+            }
+            // До приведения проверяем тип Key, чтобы, например, 256 не превратилось в uint8_t(0).
+            if(number > static_cast<std::uintmax_t>(std::numeric_limits<Key>::max()))
+            {
+                throw std::invalid_argument("Ключ не помещается в выбранный тип");
+            }
+            key = static_cast<Key>(number);
+        }
+        else if(!(input >> key))
+        {
+            throw std::invalid_argument("Не прочитан ключ");
+        }
+        // Переносим прочитанный ключ в вектор; строка не требует лишней копии.
+        keys.push_back(std::move(key));
+    }
+    return keys;
+}
 
 Type_Cach cache_type(const std::string& name);
 

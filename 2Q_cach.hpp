@@ -67,6 +67,9 @@ class Two_Q_Cach
         Erase_ELL<Key, Value> erase_cach_old(Cach_List& list);//удаляет последний эллемент из am a1in
                            
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         Value* look_up(const Key& key);
 
         Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value);
@@ -173,44 +176,55 @@ Value* Two_Q_Cach<Key, Value>::look_up(const Key& key)
 template <typename Key, typename Value>
 Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
-    if(capacity_ == 0)
+    try
     {
-        return Entry<Key, Value>{key, value};
-    }
-
-    auto found = hash_table.find(key);
-
-    if(found != hash_table.end())
-    {
-        Node& node = found -> second;
-
-        if(node.type == Type_list::A1out)
+        if(capacity_ == 0)
         {
-            Erase_ELL<Key, Value> erased = rules_displacment();
-
-            move_a1out_to_am(found, value);
-
-            if(a1out.size() > Kout)
-            {
-                erase_a1out();
-            }
-
-            return erased;
+            return Entry<Key, Value>{key, value};
         }
 
-        return std::nullopt;
+        auto found = hash_table.find(key);
+
+        if(found != hash_table.end())
+        {
+            Node& node = found -> second;
+
+            if(node.type == Type_list::A1out)
+            {
+                Erase_ELL<Key, Value> erased = rules_displacment();
+
+                move_a1out_to_am(found, value);
+
+                if(a1out.size() > Kout)
+                {
+                    erase_a1out();
+                }
+
+                return erased;
+            }
+
+            return std::nullopt;
+        }
+
+        Erase_ELL<Key, Value> erased = rules_displacment();
+
+        insert_cach(key, value, a1in, Type_list::A1in);
+
+        if(a1out.size() > Kout)
+        {
+            erase_a1out();
+        }
+
+        return erased;
     }
-
-    Erase_ELL<Key, Value> erased = rules_displacment();
-
-    insert_cach(key, value, a1in, Type_list::A1in);
-
-    if(a1out.size() > Kout)
+    catch(...)
     {
-        erase_a1out();
+        while(a1out.size() > Kout)
+        {
+            erase_a1out();
+        }
+        throw;
     }
-
-    return erased;
 }
 
 template <typename Key, typename Value>
@@ -285,7 +299,7 @@ void Two_Q_Cach<Key, Value>::move_a1out_to_am(Directory_Iterator position_direct
 
     node.ghost_position = Ghost_Iterator{};
     node.cach_position = cach_position_beg;
-    
+
     node.type = Type_list::Am;
 }
 
@@ -305,7 +319,7 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::move_a1in_to_a1out(Directory_Itera
 
     node.cach_position = Cach_Iterator{};
     node.ghost_position = ghost_position_beg;
-    
+
     return erased;
 }
 
@@ -365,6 +379,35 @@ Erase_ELL<Key, Value> Two_Q_Cach<Key, Value>::rules_displacment()
     }
 
     return erased;
+}
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> Two_Q_Cach<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+
+    result.resident.assign(a1in.begin(), a1in.end());
+    result.resident.insert(result.resident.end(), am.begin(), am.end());
+
+    result.queues = {{"A1in", {}}, {"Am", {}}, {"A1out", {a1out.begin(), a1out.end()}}};
+
+    for(const auto& entry : a1in) result.queues[0].second.push_back(entry.key);
+
+    for(const auto& entry : am) result.queues[1].second.push_back(entry.key);
+
+    result.target = Kin;
+    result.consistent = a1out.size() <= Kout && hash_table.size() == size() + a1out.size();
+
+    for(const auto& [key, node] : hash_table)
+    {
+        result.consistent = result.consistent &&
+            (node.type == Type_list::A1out ? *node.ghost_position == key : node.cach_position -> key == key);
+    }
+
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+
+    return result;
 }
 
 #endif

@@ -12,6 +12,8 @@
 
 #include "creat_cach.hpp"
 #include "cach_type.hpp"
+#include <limits>
+#include <fstream>
 #include "opt_cach.hpp"
 
 
@@ -22,19 +24,11 @@ enum class Cach_Mode
 };
 
 #if defined(CACHE_MODE_INCLUSIVE)
-
-inline constexpr Cach_Mode BUILD_CACHE_MODE =
-    Cach_Mode::Inclusive;
-
+inline constexpr Cach_Mode BUILD_CACHE_MODE = Cach_Mode::Inclusive;
 #elif defined(CACHE_MODE_EXCLUSIVE)
-
-inline constexpr Cach_Mode BUILD_CACHE_MODE =
-    Cach_Mode::Exclusive;
-
+inline constexpr Cach_Mode BUILD_CACHE_MODE = Cach_Mode::Exclusive;
 #else
-
-//#error "Cache mode is not defined"
-
+#error "Define CACHE_MODE_INCLUSIVE or CACHE_MODE_EXCLUSIVE"
 #endif
 
 template<typename Key, typename Value, Cach_Mode Mode>
@@ -86,16 +80,50 @@ class Multi_Level_Cach
 
             for(const auto& level : general_cach)
             {
-                total += std::visit(
+                const auto capacity = std::visit(
                     [](const auto& cache)
                     {
                         return cache.capacity();
                     },
                     *level
                 );
+
+                if(capacity > std::numeric_limits<std::size_t>::max() - total)
+                {
+                    throw std::overflow_error("Переполнение суммы вместимостей");
+                }
+
+                total += capacity;
             }
 
             return total;
+        }
+
+        // Возвращает копии состояний уровней, не вызывая look_up.
+        std::vector<Cache_Snapshot<Key, Value>> snapshot() const
+        {
+            std::vector<Cache_Snapshot<Key, Value>> result;
+
+            for(const auto& level : general_cach)
+            {
+                result.push_back(std::visit([](const auto& cache)
+                {
+                    return cache.snapshot();
+                }, 
+                *level));
+            }
+            return result;
+        }
+
+        // Плоский OPT сравниваем с тем же числом доступных уникальных страниц.
+        std::size_t reference_capacity() const
+        {
+            if constexpr(Mode == Cach_Mode::Inclusive)
+            {
+                return std::visit([](const auto& cache) { return cache.capacity(); },
+                                  *general_cach.back());
+            }
+            return total_capacity();
         }
 
         Multi_Level_Cach(const std::vector<Cache_name_size>& parameters, const Big_Data& data); 
@@ -107,10 +135,25 @@ class Multi_Level_Cach
 template<typename Key, typename Value, Cach_Mode Mode>
 Multi_Level_Cach<Key, Value, Mode>::Multi_Level_Cach
     (const std::vector<Cache_name_size>& parameters, const Big_Data& data): 
-    general_cach(create_cach<Key, Value>(parameters)), 
+    general_cach(),
     big_data(&data),
     hits_level(parameters.size(), 0)
 {
+    if(parameters.empty())
+    {
+        throw std::invalid_argument("Нужен хотя бы один уровень");
+    }
+    for(const auto& parameter : parameters)
+    {
+        if constexpr(Mode == Cach_Mode::Inclusive)
+        {
+            if(parameter.capacity == 0)
+            {
+                throw std::invalid_argument("Inclusive требует положительных вместимостей");
+            }
+        }
+    }
+    general_cach = create_cach<Key, Value>(parameters);
 }
 
 template<typename Key, typename Value, Cach_Mode Mode>
@@ -232,75 +275,50 @@ void Multi_Level_Cach<Key, Value, Mode>::redistribution_ex_cach(Erase_ELL<Key, V
     }
 }
 
+// Один ручной прогон: учебные данные, ответы, попадания уровней и плоский OPT.
 template<typename Key, typename Value>
 void general_fun(std::istream& input, std::ostream& output)
 {
-    std::unordered_map<Key, Value> data
+    const std::unordered_map<Key, Value> data
     {
-        {1, 100},
-        {2, 200},
-        {3, 300},
-        {4, 400},
-        {5, 500},
-        {6, 600},
-        {7, 700},
-        {8, 800},
-        {9, 900},
-        {10, 1000}
+        {1, 100}, {2, 200}, {3, 300}, {4, 400}, {5, 500},
+        {6, 600}, {7, 700}, {8, 800}, {9, 900}, {10, 1000}
     };
 
-    FILE* config = std::fopen("config.txt", "r");
+    std::ifstream config("config.txt");
 
-    std::vector<Cache_name_size> cach_name_size_vec = parsing_cach_parametr(config, std::cin);
+    if(!config)
+    {
+        throw std::runtime_error("Не открыт config.txt в текущем каталоге");
+    }
 
-    Multi_Level_Cach<int, int, BUILD_CACHE_MODE> cach(cach_name_size_vec, data);
+    const auto parameters = parsing_cach_parametr(config, input);
 
-    std::fclose(config);
+    Multi_Level_Cach<Key, Value, BUILD_CACHE_MODE> cach(parameters, data);
 
-    std::size_t count_key = 0;
-    input >> count_key;
-
-    std::size_t count = 0;
+    const auto list_key_requests = read_requests<Key>(input);
     std::size_t count_hit = 0;
 
-    std::vector<Key> list_key_requests;
-    list_key_requests.reserve(count_key);
-    
-    while(count < count_key)
+    for(const Key& key : list_key_requests)
     {
-        Key key = 0;
-        input >> key;
-
-        list_key_requests.push_back(key);
-
-        auto result = cach.access(key);
-        Value value = result.sought_element;
-
-        if(result.hit)
-        {
-            count_hit++;
-        }
-        output << "Key " << key << " == " << value << "\n";
-        count++;
+        const auto result = cach.access(key);
+        count_hit += result.hit;
+        output << "Key " << key << " == " << result.sought_element << "\n";
     }
 
     output << "\n========== Cache hit statistics ==========\n\n";
-
     output << "Колличество попаданий моего кэша == " << count_hit << "\n";
-    for(std::size_t i = 0; i < cach.hits_level.size(); i++)
+    for(std::size_t i = 0; i < cach.hits_level.size(); ++i)
     {
-        output << "Колличество попаданий в L" << i + 1 << " == " << cach.hits_level.at(i) << "\n";
+        output << "Колличество попаданий в L" << i + 1 << " == " << cach.hits_level[i] << "\n";
     }
-
     output << "\n==========================================\n\n";
 
-    OptCache<Key, Value> opt_cach(cach.total_capacity(), list_key_requests, data);
-
+    OptCache<Key, Value> opt_cach(cach.reference_capacity(), list_key_requests, data);
     for(const Key& key : list_key_requests)
     {
         opt_cach.access(key);
     }
-
     opt_cach.print_statistics(output);
 }
 

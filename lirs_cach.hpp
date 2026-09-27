@@ -45,7 +45,7 @@ class Lirs_cach
             bool resident_flag;//если настоящий то true это флаг то что эллемент находится в кеше
             bool in_s_flag;
             bool in_q_flag;
-    
+
             Cach_Iterator resident_position;
             Key_Iterator s_position;
             Key_Iterator q_position;            
@@ -65,8 +65,6 @@ class Lirs_cach
 
         void move_to_top_S(Directory_Iterator hash_table_it);
 
-        //void erase_from_Q(Directory_Iterator hash_table_it);
-
         void hit_hir_S_ell(Directory_Iterator hash_table_it); 
 
         void hit_hir_Q_ell(Directory_Iterator hash_table_it);
@@ -74,8 +72,11 @@ class Lirs_cach
         Erase_ELL<Key, Value> hit_no_resident(Directory_Iterator hash_table_it, const Value& value); // опападние в NON_RES
 
         void prune_S(); //берет и очищает низ LIR от HIR
-    
+
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         Erase_ELL<Key, Value> extract_entry(const Key& key);
 
         Value* look_up(const Key& key);
@@ -119,7 +120,7 @@ Erase_ELL<Key, Value> Lirs_cach<Key, Value>::extract_entry(const Key& key)
     }
 
     Erase_ELL<Key, Value> erased_ell = Entry<Key, Value>{found -> first, (node.resident_position) -> value};
-    erase_key(erased_ell -> key); // удаляем без занесения в ghost
+    erase_key(erased_ell -> key); // Сохраняем историю в S по тем же правилам, что erase_key.
 
     return erased_ell;
 }
@@ -189,26 +190,40 @@ Value* Lirs_cach<Key, Value>::look_up(const Key& key)
 template <typename Key, typename Value>
 Erase_ELL<Key, Value> Lirs_cach<Key, Value>::insert_value(const Key& key, const Value& value)
 {
-    if(capacity_ == 0)
+    try
     {
-        return Entry<Key, Value>{key, value};
+        if(capacity_ == 0)
+        {
+            return Entry<Key, Value>{key, value};
+        }
+
+        auto found = general_hash_table.find(key);
+
+        if(found == general_hash_table.end())
+        {
+            return insert_new(key, value);
+        }
+
+        Node& node = found -> second;
+
+        if(node.status == Status::HIR_NO_RES)
+        {
+            return hit_no_resident(found, value);
+        }
+
+        return std::nullopt;
     }
-
-    auto found = general_hash_table.find(key);
-
-    if(found == general_hash_table.end())
+    catch(...)
     {
-        return insert_new(key, value);
+        // Неудачная вставка не должна оставлять несогласованное состояние.
+        general_hash_table.clear();
+        list_S.clear();
+        list_Q.clear();
+        resident.clear();
+        LIR_count_ = 0;
+        HIR_resident_count_ = 0;
+        throw;
     }
-
-    Node& node = found -> second;
-
-    if(node.status == Status::HIR_NO_RES)
-    {
-        return hit_no_resident(found, value);
-    }
-
-    return std::nullopt;
 }
 
 template <typename Key, typename Value>
@@ -406,7 +421,21 @@ void Lirs_cach<Key, Value>::hit_hir_Q_ell(Directory_Iterator hash_table_it)
     node.s_position = list_S.begin();
     node.in_s_flag = true;
 
-    list_Q.splice(list_Q.begin(), list_Q, node.q_position);
+    // Внешнее удаление могло освободить LIR-квоту. Заполняем её на hit,
+    // иначе при пустом S его основанием останется HIR.
+    if(LIR_count_ < LIR_capacity_)
+    {
+        list_Q.erase(node.q_position);
+        node.q_position = Key_Iterator{};
+        node.in_q_flag = false;
+        node.status = Status::LIR;
+        LIR_count_++;
+        HIR_resident_count_--;
+    }
+    else
+    {
+        list_Q.splice(list_Q.begin(), list_Q, node.q_position);
+    }
 }
 
 template <typename Key, typename Value>
@@ -423,7 +452,7 @@ Erase_ELL<Key, Value> Lirs_cach<Key, Value>::hit_no_resident(Directory_Iterator 
     node_hit.status = Status::LIR;
     node_hit.resident_flag = true;
     node_hit.resident_position = resident.begin();
-    
+
     if(HIR_capacity_ == HIR_resident_count_ && LIR_count_ == LIR_capacity_)
     {
         Directory_Iterator oldest_Q_it = general_hash_table.find(list_Q.back());
@@ -497,5 +526,68 @@ Lirs_cach<Key, Value>::Lirs_cach(std::size_t capacity, std::size_t HIR_capacity)
     general_hash_table.reserve(capacity_ * 2);
 }
 
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> Lirs_cach<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+
+    result.resident.assign(resident.begin(), resident.end());
+
+    result.queues = {{"S", {list_S.begin(), list_S.end()}}, {"Q", {list_Q.begin(), list_Q.end()}},
+                     {"LIR", {}}, {"HIR", {}}, {"ghost", {}}};
+    std::size_t in_s = 0;
+    std::size_t in_q = 0;
+
+    for(const auto& [key, node] : general_hash_table)
+    {
+        if(node.in_s_flag)
+        {
+            ++in_s;
+            result.consistent = result.consistent && *node.s_position == key;
+        }
+        if(node.in_q_flag)
+        {
+            ++in_q;
+            result.consistent = result.consistent && *node.q_position == key;
+        }
+        if(node.resident_flag)
+        {
+            result.consistent = result.consistent && node.resident_position -> key == key;
+        }
+        if(node.status == Status::LIR)
+        {
+            ++result.lir_count;
+            result.queues[2].second.push_back(key);
+            result.consistent = result.consistent && node.resident_flag && node.in_s_flag && !node.in_q_flag;
+        }
+        else if(node.status == Status::HIR)
+        {
+            ++result.hir_count;
+            result.queues[3].second.push_back(key);
+            result.consistent = result.consistent && node.resident_flag && node.in_q_flag;
+        }
+        else
+        {
+            result.queues[4].second.push_back(key);
+            result.consistent = result.consistent && !node.resident_flag && node.in_s_flag && !node.in_q_flag;
+        }
+    }
+
+    result.consistent = result.consistent && in_s == list_S.size() && in_q == list_Q.size() &&
+        result.lir_count == LIR_count_ && result.hir_count == HIR_resident_count_ &&
+        LIR_count_ <= LIR_capacity_ && HIR_resident_count_ <= HIR_capacity_ &&
+        resident.size() == LIR_count_ + HIR_resident_count_;
+
+    if(!list_S.empty())
+    {
+        result.consistent = result.consistent && general_hash_table.at(list_S.back()).status == Status::LIR;
+    }
+
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+    
+    return result;
+}
 
 #endif

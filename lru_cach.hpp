@@ -31,6 +31,9 @@ class Lru_cach
         void evict_oldest(); // удалить самый давний элемент из списка и хеш-таблицы
         
     public:
+        // Копирует резидентов и очереди; приоритеты и статистика не меняются.
+        Cache_Snapshot<Key, Value> snapshot() const;
+
         Value* look_up(const Key& key); // проверить наличие и выполнить правило переноса
 
         Erase_ELL<Key, Value> insert_value(const Key& key, const Value& value); // вставить новое значение
@@ -169,6 +172,25 @@ void Lru_cach<Key, Value>::evict_oldest()
 template <typename Key, typename Value>
 Lru_cach<Key, Value>::Lru_cach(std::size_t capacity): capacity_(capacity)
 {
+}
+
+
+template<typename Key, typename Value>
+Cache_Snapshot<Key, Value> Lru_cach<Key, Value>::snapshot() const
+{
+    Cache_Snapshot<Key, Value> result;
+
+    result.resident.assign(lru_cach.begin(), lru_cach.end());
+    result.consistent = hash_table.size() == lru_cach.size();
+
+    for(const auto& [key, position] : hash_table)
+    {
+        result.consistent = result.consistent && position -> key == key;
+    }
+
+    result.consistent = result.consistent && result.resident.size() <= capacity_;
+    
+    return result;
 }
 
 #endif
