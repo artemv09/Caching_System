@@ -1,7 +1,6 @@
 #include "creat_cach.hpp"
 #include <charconv>
 
-// from_chars преобразует текст в число; ниже ec и ptr проверяют ошибку и конец токена.
 std::size_t read_size(std::istream& input, const std::string& label, std::size_t limit)
 {
     std::string token;
@@ -23,7 +22,6 @@ std::size_t read_size(std::istream& input, const std::string& label, std::size_t
     return static_cast<std::size_t>(value);
 }
 
-// Отклоняет лишние данные в файле конфигурации; нужен только этому парсеру.
 static void require_end(std::istream& input)
 {
     std::string extra;
@@ -39,7 +37,6 @@ static void require_end(std::istream& input)
     }
 }
 
-// Сначала проверяет файл с именами, затем читает размеры из консоли.
 std::vector<Cache_name_size> parsing_cach_parametr(std::istream& config, std::istream& input)
 {
     const auto count = read_size(config, "число уровней", 64);
@@ -81,7 +78,6 @@ std::vector<Cache_name_size> parsing_cach_parametr(std::istream& config, std::is
     return result;
 }
 
-// Возвращает один полный поток запросов, не ожидая EOF после N ключей.
 std::vector<int> read_requests(std::istream& input, int max_key)
 {
     if(max_key < 1 || max_key > MAX_PAGE_KEY)
