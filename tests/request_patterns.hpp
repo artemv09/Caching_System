@@ -24,7 +24,6 @@ struct Pattern
     std::string name;
     std::vector<int> keys;
     bool randomized = false;
-    std::string parameters;
     std::optional<std::uint32_t> seed;
 };
 
@@ -383,6 +382,7 @@ inline std::vector<int> two_scales(std::size_t count, std::size_t hot, std::size
     check_range(count, hot);
     check_range(count, warm);
     check_range(count, cold);
+
     if(hot + warm + cold > MAX_PAGE_KEY)
     {
         throw std::invalid_argument("Слишком большие множества");
@@ -392,6 +392,7 @@ inline std::vector<int> two_scales(std::size_t count, std::size_t hot, std::size
     {
         throw std::invalid_argument("invalid locality sizes");
     }
+    
     std::mt19937 rng(seed);
     std::uniform_int_distribution<int> percent(0, 99);
     std::uniform_int_distribution<int> h(1, static_cast<int>(hot));
@@ -427,7 +428,6 @@ inline std::vector<Pattern> make_patterns(std::size_t count, std::size_t l1_capa
 
     auto add = [&](std::string name, std::vector<int> keys, bool randomized = false)
     {
-        // При равных ёмкостях некоторые граничные сценарии совпадают.
         for(const auto& pattern : patterns)
         {
             if(pattern.name == name)
@@ -447,8 +447,6 @@ inline std::vector<Pattern> make_patterns(std::size_t count, std::size_t l1_capa
             }
         }
         patterns.push_back({std::move(name), std::move(keys), randomized,
-                            "N=" + std::to_string(count) + ";l1=" + std::to_string(l1_capacity) +
-                            ";last=" + std::to_string(last_capacity) + ";total=" + std::to_string(total_capacity),
                             randomized ? std::optional<std::uint32_t>(seed) : std::nullopt});
     };
 
@@ -541,7 +539,6 @@ inline std::vector<Pattern> make_patterns(std::size_t count, std::size_t l1_capa
     return patterns;
 }
 
-// Параметры одного семейства
 struct Settings
 {
     std::size_t count = 100;
@@ -559,17 +556,13 @@ struct Settings
 inline Pattern generate(const std::string& name, const Settings& settings)
 {
     const auto& p = settings;
+
     check_range(p.count, p.width);
     Pattern result;
     result.name = name;
     std::ostringstream exponent;
     exponent << std::setprecision(std::numeric_limits<double>::max_digits10) << p.exponent;
-    result.parameters = "N=" + std::to_string(p.count) + ";width=" + std::to_string(p.width) +
-                        ";hot=" + std::to_string(p.hot) + ";cold=" + std::to_string(p.cold) +
-                        ";hot_percent=" + std::to_string(p.hot_percent) +
-                        ";scan=" + std::to_string(p.scan_length) +
-                        ";phase=" + std::to_string(p.phase_length) + ";burst=" + std::to_string(p.burst) +
-                        ";exponent=" + exponent.str();
+
 
     if(name == "one_key")
     {

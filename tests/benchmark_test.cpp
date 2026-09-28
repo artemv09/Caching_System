@@ -152,13 +152,10 @@ void run_patterns(
 {
     Multi_Level_Cach<Key, Value, Mode> reference(configurations.front(), data);
     const auto opt_capacity = reference.reference_capacity();
-    // isatty проверяет, что stdout — терминал: в файл цветовые коды не записываются.
-    const bool color_output = ::isatty(STDOUT_FILENO) != 0;
 
     for(const auto& pattern : patterns)
     {
-        std::cout << "\nPattern: " << (color_output ? "\033[31m" : "")
-                  << pattern.name << (color_output ? "\033[0m" : "") << "\n";
+        std::cout << "\nPattern: " << pattern.name;
         std::size_t test_number = 1;
 
         for(const auto& configuration : configurations)
@@ -178,8 +175,8 @@ void run_patterns(
                          pattern.keys.size());
         }
 
-        // reference_capacity(): последний уровень для Inclusive, сумма для Exclusive.
         OptCache<Key, Value> opt_cach(opt_capacity, pattern.keys, data);
+
         for(const Key& key : pattern.keys)
         {
             opt_cach.access(key);

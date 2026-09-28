@@ -333,6 +333,7 @@ Cache_Snapshot<Key, Value> Lfu_cach<Key, Value>::snapshot() const
             ++count;
         }
     }
+    
     result.consistent = result.consistent && count == size() && minimum == min_frequency;
     result.consistent = result.consistent && result.resident.size() <= capacity_;
     

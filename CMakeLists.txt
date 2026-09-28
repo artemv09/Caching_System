@@ -11,12 +11,12 @@ if(NOT CACHE_MODE STREQUAL "Inclusive" AND NOT CACHE_MODE STREQUAL "Exclusive")
     message(FATAL_ERROR "CACHE_MODE must be Inclusive or Exclusive")
 
 endif()
-# Раздельная сборка приложений, benchmark и unit-тестов.
+# Раздельная сборка приложений, benchmark и unit-тестов
 option(BUILD_CACHE_APP "Build the interactive cache application" ON)
 option(BUILD_BENCHMARK "Build generated-request benchmarks" ON)
 option(CACHE_SANITIZERS "Enable ASan and UBSan" OFF)
 option(CACHE_DEBUG_ITERATORS "Enable libstdc++ iterator checks" OFF)
-# Эти флаги применяются также к GoogleTest: ABI всех связанных файлов одинаков.
+# Эти флаги применяются также к GoogleTest: ABI всех связанных файлов одинаков
 if(CACHE_DEBUG_ITERATORS)
     add_compile_definitions(_GLIBCXX_DEBUG)
 endif()
@@ -41,7 +41,7 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
-    # Сначала установленная библиотека; при её отсутствии — фиксированный commit 1.14.
+    # Сначала установленная библиотека
     if(NOT CACHE_DEBUG_ITERATORS AND NOT CACHE_SANITIZERS)
         find_package(GTest 1.10 QUIET)
     endif()
@@ -61,7 +61,7 @@ if(BUILD_TESTING)
     else()
         set(CACHE_GTEST_MAIN GTest::Main)
     endif()
-    # Один исполняемый файл содержит все политики, обе иерархии и свои примеры.
+    # Один исполняемый файл содержит все политики, обе иерархии и свои примеры
     add_executable(unit_tests
         tests/unit/lru_test.cpp
         tests/unit/lfu_test.cpp
